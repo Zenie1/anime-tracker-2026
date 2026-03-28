@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AniTracker — 2026 Season Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- ════════════════════════════════════════════════════════════════
+     style.css  (inlined for single-file portability)
+════════════════════════════════════════════════════════════════ -->
+<style>
+:root {
+  --ink: #0a0a0f;
+  --paper: #f0ece3;
+  --red: #e8192c;
+  --gold: #f5c842;
+  --muted: #7a7060;
+  --card-bg: #111118;
+  --border: rgba(245,200,66,0.15);
+  --panel: #16161f;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999; opacity: 0.3;
+}
+/* ── HEADER ── */
+header {
+  position: sticky; top: 0; z-index: 200;
+  background: rgba(10,10,15,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  height: 60px;
+  display: flex; align-items: center;
+  padding: 0 2rem; gap: 1.5rem;
+}
+.logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.7rem; letter-spacing: 0.1em;
+  color: var(--gold); white-space: nowrap; text-decoration: none;
+  flex-shrink: 0;
+}
+.logo span { color: var(--red); }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+.live-dot { width: 7px; height: 7px; background: #22c55e; border-radius: 50%; animation: blink 2s infinite; transition: background 0.4s; }
+.live-dot.loading { background: var(--gold); }
+.live-dot.error   { background: var(--red); animation: none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+.live-label { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+/* ── HERO ── */
+.hero {
+  background: var(--red);
+  padding: 3rem 2rem 2rem;
+  display: grid; grid-template-columns: 1fr auto;
+  align-items: end; gap: 2rem;
+  position: relative; overflow: hidden;
+}
+.hero::after {
+  content: '2026';
+  position: absolute; right: -0.04em; bottom: -0.15em;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(7rem, 17vw, 17rem);
+  line-height: 1; color: rgba(0,0,0,0.13);
+  pointer-events: none; user-select: none;
+}
+.hero-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(2.2rem, 5.5vw, 4.5rem);
+  line-height: 0.95; letter-spacing: 0.04em;
+  position: relative; z-index: 1;
+}
+.hero-title em { font-style: normal; color: var(--gold); display: block; }
+.hero-sub { font-family: 'Space Mono', monospace; font-size: 0.68rem; letter-spacing: 0.1em; opacity: 0.7; margin-top: 0.5rem; position: relative; z-index: 1; }
+.hero-stats { display: flex; gap: 2rem; position: relative; z-index: 1; }
+.stat { text-align: right; }
+.stat-n { font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; line-height: 1; color: var(--gold); }
+.stat-l { font-family: 'Space Mono', monospace; font-size: 0.58rem; letter-spacing: 0.08em; opacity: 0.75; text-transform: uppercase; }
+/* ── SHELL ── */
+.shell { display: grid; grid-template-columns: 255px 1fr; max-width: 1440px; margin: 0 auto; }
+/* ── SIDEBAR ── */
+.sidebar {
+  background: var(--panel); border-right: 1px solid var(--border);
+  padding: 1.5rem 1.1rem; position: sticky; top: 60px;
+  height: calc(100vh - 60px); overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); }
+.filter-section { margin-bottom: 1.6rem; }
+.filter-label {
+  font-family: 'Space Mono', monospace; font-size: 0.58rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 0.65rem;
+  padding-bottom: 0.38rem; border-bottom: 1px solid var(--border); display: block;
+}
+.search-box {
+  display: flex; align-items: center; gap: 0.5rem;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 2px; padding: 0.55rem 0.7rem; margin-bottom: 1.6rem;
+}
+.search-box svg { color: var(--muted); flex-shrink: 0; }
+#searchInput { background: none; border: none; outline: none; color: var(--paper); font-family: 'Space Mono', monospace; font-size: 0.72rem; width: 100%; }
+#searchInput::placeholder { color: var(--muted); }
+.chip-group { display: flex; flex-direction: column; gap: 0.28rem; }
+.chip {
+  font-family: 'Space Mono', monospace; font-size: 0.63rem; letter-spacing: 0.05em;
+  padding: 0.38rem 0.65rem; border-radius: 2px; cursor: pointer;
+  border: 1px solid transparent; color: var(--muted); background: transparent;
+  transition: all 0.16s; user-select: none;
+  display: flex; justify-content: space-between; align-items: center; text-transform: uppercase;
+}
+.chip:hover { color: var(--paper); background: rgba(255,255,255,0.05); }
+.chip.active { color: var(--gold); border-color: rgba(245,200,66,0.3); background: rgba(245,200,66,0.07); }
+.chip-count { font-size: 0.53rem; color: var(--muted); background: rgba(255,255,255,0.07); padding: 0.1rem 0.32rem; border-radius: 10px; }
+.chip.active .chip-count { color: var(--gold); background: rgba(245,200,66,0.15); }
+.genre-chip-group { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.g-chip {
+  font-family: 'Space Mono', monospace; font-size: 0.56rem; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 0.25rem 0.5rem; border-radius: 2px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.09); color: var(--muted); background: rgba(255,255,255,0.04);
+  transition: all 0.16s; user-select: none;
+}
+.g-chip:hover { color: var(--paper); border-color: rgba(255,255,255,0.2); }
+.g-chip.active { color: var(--red); border-color: rgba(232,25,44,0.4); background: rgba(232,25,44,0.08); }
+.clear-btn {
+  font-family: 'Space Mono', monospace; font-size: 0.58rem; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer; background: none; border: none;
+  padding: 0; text-decoration: underline; transition: color 0.14s;
+}
+.clear-btn:hover { color: var(--red); }
+/* ── MAIN ── */
+.main { padding: 1.8rem; }
+.results-bar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem; flex-wrap: wrap; }
+.results-bar h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.45rem; letter-spacing: 0.08em; color: var(--gold); }
+.results-count { font-family: 'Space Mono', monospace; font-size: 0.63rem; color: var(--muted); letter-spacing: 0.05em; }
+.sort-wrap { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+.sort-label { font-family: 'Space Mono', monospace; font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+#sortSelect { background: var(--panel); border: 1px solid var(--border); color: var(--paper); font-family: 'Space Mono', monospace; font-size: 0.63rem; padding: 0.33rem 0.6rem; border-radius: 2px; outline: none; cursor: pointer; }
+/* ── GRID ── */
+.anime-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 1.1rem; }
+/* ── SKELETONS ── */
+.skeleton-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+.skeleton-poster { aspect-ratio: 3/4; background: linear-gradient(90deg,#1a1a22 25%,#22222e 50%,#1a1a22 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+.skeleton-body { padding: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.skeleton-line { height: 10px; border-radius: 2px; background: linear-gradient(90deg,#1a1a22 25%,#22222e 50%,#1a1a22 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+.skeleton-line.short { width: 55%; }
+.skeleton-line.medium { width: 80%; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+/* ── CARDS ── */
+.anime-card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 3px; overflow: hidden;
+  transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
+  cursor: pointer; display: flex; flex-direction: column;
+  animation: fadeUp 0.32s ease both;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.anime-card:hover { transform: translateY(-7px); box-shadow: 0 18px 45px rgba(0,0,0,0.65); border-color: rgba(245,200,66,0.45); }
+.poster-wrap { position: relative; overflow: hidden; background: #1a1a22; aspect-ratio: 3/4; }
+.poster-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s, opacity 0.3s; opacity: 0; }
+.poster-wrap img.loaded { opacity: 1; }
+.anime-card:hover .poster-wrap img { transform: scale(1.05); }
+.badge-row { position: absolute; top: 0.5rem; left: 0.5rem; right: 0.5rem; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+.season-badge { font-family: 'Space Mono', monospace; font-size: 0.54rem; letter-spacing: 0.07em; text-transform: uppercase; padding: 0.2rem 0.42rem; border-radius: 2px; font-weight: 700; }
+.b-winter { background: #3b82f6; color: #fff; }
+.b-spring { background: #ec4899; color: #fff; }
+.b-summer { background: #f97316; color: #fff; }
+.b-fall   { background: #a78bfa; color: #fff; }
+.b-tba    { background: #6b7280; color: #fff; }
+.score-badge { background: rgba(10,10,15,0.82); backdrop-filter: blur(6px); border: 1px solid var(--gold); color: var(--gold); font-family: 'Space Mono', monospace; font-size: 0.58rem; font-weight: 700; padding: 0.2rem 0.4rem; border-radius: 2px; }
+.status-ribbon { position: absolute; bottom: 0; left: 0; right: 0; font-family: 'Space Mono', monospace; font-size: 0.53rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.28rem 0.5rem; text-align: center; }
+.s-airing   { background: rgba(34,197,94,0.82);   color: #fff; }
+.s-finished { background: rgba(107,114,128,0.82); color: #fff; }
+.s-upcoming { background: rgba(245,200,66,0.88);  color: #000; }
+.card-body { padding: 0.8rem; flex: 1; display: flex; flex-direction: column; gap: 0.38rem; }
+.card-studio { font-family: 'Space Mono', monospace; font-size: 0.54rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); }
+.card-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.02rem; letter-spacing: 0.03em; line-height: 1.15; color: var(--paper); }
+.card-genres { display: flex; flex-wrap: wrap; gap: 0.22rem; }
+.g-pill { font-family: 'Space Mono', monospace; font-size: 0.48rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 0.16rem 0.35rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 1px; color: var(--muted); }
+.card-footer { margin-top: auto; padding-top: 0.55rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: flex-end; }
+.premiere-info .lbl  { font-family: 'Space Mono', monospace; font-size: 0.48rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
+.premiere-info .date { font-family: 'Space Mono', monospace; font-size: 0.58rem; color: var(--gold); font-weight: 700; }
+.stream-chip { font-family: 'Space Mono', monospace; font-size: 0.48rem; letter-spacing: 0.04em; padding: 0.16rem 0.35rem; border-radius: 2px; text-transform: uppercase; }
+.sc-cr  { background: rgba(255,120,40,0.15); border: 1px solid rgba(255,120,40,0.35); color: #fb923c; }
+.sc-nf  { background: rgba(229,9,20,0.15);   border: 1px solid rgba(229,9,20,0.35);   color: #f87171; }
+.sc-hi  { background: rgba(155,89,182,0.15); border: 1px solid rgba(155,89,182,0.35); color: #c084fc; }
+.sc-dis { background: rgba(30,100,220,0.15); border: 1px solid rgba(30,100,220,0.35); color: #93c5fd; }
+.sc-tba { background: rgba(107,114,128,0.15);border: 1px solid rgba(107,114,128,0.35);color: #9ca3af; }
+.empty { grid-column: 1/-1; text-align: center; padding: 5rem 2rem; color: var(--muted); }
+.empty strong { font-family: 'Bebas Neue', sans-serif; font-size: 5rem; display: block; color: rgba(255,255,255,0.04); letter-spacing: 0.1em; }
+.empty p { font-family: 'Space Mono', monospace; font-size: 0.72rem; margin-top: 0.5rem; }
+/* ── ERROR ── */
+.error-banner {
+  grid-column: 1/-1; background: rgba(232,25,44,0.1); border: 1px solid rgba(232,25,44,0.3);
+  border-radius: 3px; padding: 1rem 1.2rem;
+  font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--red);
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.error-retry {
+  margin-left: auto; background: none; border: 1px solid var(--red);
+  color: var(--red); font-family: 'Space Mono', monospace; font-size: 0.6rem;
+  padding: 0.3rem 0.7rem; cursor: pointer; border-radius: 2px;
+  text-transform: uppercase; letter-spacing: 0.06em; transition: all 0.15s;
+}
+.error-retry:hover { background: var(--red); color: #fff; }
+/* ── MODAL ── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(14px); z-index: 300;
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+  opacity: 0; pointer-events: none; transition: opacity 0.22s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: #13131a; border: 1px solid var(--border);
+  border-radius: 4px; max-width: 820px; width: 100%;
+  max-height: 92vh; overflow-y: auto;
+  transform: translateY(18px); transition: transform 0.22s; position: relative;
+}
+.overlay.open .modal { transform: translateY(0); }
+.modal-close {
+  position: absolute; top: 0.9rem; right: 0.9rem; z-index: 10;
+  background: rgba(255,255,255,0.08); border: none; color: var(--paper);
+  font-family: 'Space Mono', monospace; font-size: 0.68rem;
+  padding: 0.36rem 0.68rem; cursor: pointer; border-radius: 2px;
+}
+.modal-close:hover { background: rgba(255,255,255,0.15); }
+.modal-grid { display: grid; grid-template-columns: 210px 1fr; }
+.modal-poster { width: 210px; object-fit: cover; display: block; background: #1a1a22; min-height: 280px; }
+.modal-body { padding: 1.8rem 1.8rem 1.8rem 1.4rem; }
+.modal-studio { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--red); margin-bottom: 0.3rem; }
+.modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.85rem; letter-spacing: 0.04em; line-height: 1.05; }
+.modal-jp { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.85rem; }
+.meta-row { display: flex; flex-wrap: wrap; gap: 0.38rem; margin-bottom: 0.85rem; }
+.meta-chip { font-family: 'Space Mono', monospace; font-size: 0.57rem; letter-spacing: 0.05em; padding: 0.26rem 0.52rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 2px; color: var(--paper); }
+.modal-synopsis { font-size: 0.79rem; line-height: 1.7; color: rgba(240,236,227,0.72); margin-bottom: 1.1rem; }
+.modal-section { font-family: 'Space Mono', monospace; font-size: 0.58rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.5rem; padding-bottom: 0.28rem; border-bottom: 1px solid var(--border); }
+.cast-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(125px,1fr)); gap: 0.38rem; margin-bottom: 1rem; }
+.cast-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 2px; padding: 0.42rem 0.52rem; }
+.cast-char  { font-size: 0.68rem; font-weight: 700; color: var(--paper); margin-bottom: 0.1rem; }
+.cast-actor { font-family: 'Space Mono', monospace; font-size: 0.54rem; color: var(--muted); }
+.ep-table { width: 100%; border-collapse: collapse; font-family: 'Space Mono', monospace; font-size: 0.6rem; }
+.ep-table th { text-align: left; padding: 0.35rem 0.48rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.ep-table td { padding: 0.38rem 0.48rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.ep-table tr.ep-aired    td { color: var(--muted); }
+.ep-table tr.ep-next     td { color: var(--gold); font-weight: 700; }
+.ep-table tr.ep-upcoming td { color: rgba(240,236,227,0.6); }
+.mal-link { display: inline-flex; align-items: center; gap: 0.4rem; font-family: 'Space Mono', monospace; font-size: 0.58rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); border: 1px solid var(--gold); padding: 0.4rem 0.82rem; border-radius: 2px; text-decoration: none; margin-top: 1rem; transition: background 0.18s, color 0.18s; }
+.mal-link:hover { background: var(--gold); color: var(--ink); }
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 400;
+  font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--panel); border: 1px solid var(--border); color: var(--gold);
+  padding: 0.55rem 1rem; border-radius: 2px;
+  transform: translateY(80px); opacity: 0; transition: all 0.3s; pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+/* ── FOOTER ── */
+footer { border-top: 1px solid var(--border); padding: 1.4rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; font-family: 'Space Mono', monospace; font-size: 0.58rem; color: var(--muted); }
+footer a { color: var(--muted); text-decoration: none; transition: color 0.14s; }
+footer a:hover { color: var(--paper); }
+.footer-links { display: flex; gap: 1.2rem; }
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+  .hero { grid-template-columns: 1fr; }
+  .modal-grid { grid-template-columns: 1fr; }
+  .modal-poster { width: 100%; min-height: 220px; }
+}
+@media (max-width: 600px) {
+  header { padding: 0 1rem; }
+  .main { padding: 1rem; }
+  .sidebar { padding: 1rem; }
+  .hero { padding: 2rem 1rem 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#"><span>Ani</span>Tracker</a>
+  <div class="header-right">
+    <div class="live-dot loading"></div>
+    <span class="live-label">Connecting to Jikan / MAL…</span>
+  </div>
+</header>
+
+<div class="hero">
+  <div>
+    <h1 class="hero-title">THE<br><em>SEASON</em><br>TRACKER</h1>
+    <p class="hero-sub">// ALL CONFIRMED 2026 RELEASES</p>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-n" id="heroTotal">—</div>
+      <div class="stat-l">Shows Tracked</div>
+    </div>
+    <div class="stat">
+      <div class="stat-n">4</div>
+      <div class="stat-l">Seasons</div>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="search-box">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="searchInput" placeholder="Search anime, studio, genre…">
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Season</span>
+      <div class="chip-group" id="seasonFilters">
+        <div class="chip active" data-season="all">All Seasons <span class="chip-count" id="cnt-all">—</span></div>
+        <div class="chip" data-season="winter">❄ Winter 2026 <span class="chip-count" id="cnt-winter">—</span></div>
+        <div class="chip" data-season="spring">🌸 Spring 2026 <span class="chip-count" id="cnt-spring">—</span></div>
+        <div class="chip" data-season="summer">☀ Summer 2026 <span class="chip-count" id="cnt-summer">—</span></div>
+        <div class="chip" data-season="fall">🍂 Fall 2026 <span class="chip-count" id="cnt-fall">—</span></div>
+      </div>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Status</span>
+      <div class="chip-group" id="statusFilters">
+        <div class="chip" data-status="airing">● Airing Now</div>
+        <div class="chip" data-status="finished">✓ Finished</div>
+        <div class="chip" data-status="upcoming">◎ Upcoming</div>
+      </div>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Streaming</span>
+      <div class="chip-group" id="streamFilters">
+        <div class="chip" data-stream="Crunchyroll">Crunchyroll</div>
+        <div class="chip" data-stream="Netflix">Netflix</div>
+        <div class="chip" data-stream="HIDIVE">HIDIVE</div>
+        <div class="chip" data-stream="Disney">Disney+ / Hulu</div>
+      </div>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Genre</span>
+      <div class="genre-chip-group" id="genreFilters"></div>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Studio</span>
+      <div class="chip-group" id="studioFilters"></div>
+    </div>
+    <button class="clear-btn" id="clearBtn">✕ Clear all filters</button>
+  </aside>
+
+  <div class="main">
+    <div class="results-bar">
+      <h2 id="sectionTitle">ALL SEASONS</h2>
+      <span class="results-count" id="resultsCount"></span>
+      <div class="sort-wrap">
+        <span class="sort-label">Sort</span>
+        <select id="sortSelect">
+          <option value="default">Default</option>
+          <option value="title">Title A–Z</option>
+          <option value="score">MAL Score</option>
+          <option value="premiere">Premiere Date</option>
+        </select>
+      </div>
+    </div>
+    <div class="anime-grid" id="grid"></div>
+  </div>
+</div>
+
+<footer>
+  <span>ANITRACKER · Data via Jikan API &amp; MyAnimeList</span>
+  <div class="footer-links">
+    <a href="https://myanimelist.net/anime/season/2026/winter" target="_blank">MAL Winter</a>
+    <a href="https://myanimelist.net/anime/season/2026/spring" target="_blank">MAL Spring</a>
+    <a href="https://animeschedule.net/" target="_blank">AnimeSchedule</a>
+    <a href="https://anichart.net/" target="_blank">AniChart</a>
+  </div>
+</footer>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal">
+    <button class="modal-close" id="modalClose">✕ Close</button>
+    <div class="modal-grid" id="modalGrid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     app.js  (inlined for single-file portability)
+     Jikan API v4 · localStorage caching · auto-refresh · cover-art fix
+════════════════════════════════════════════════════════════════ -->
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────────
+const JIKAN_BASE   = 'https://api.jikan.moe/v4';
+const CACHE_KEY    = 'anitracker_cache_v2';
+const CACHE_TTL_MS = 60 * 60 * 1000;
+const REFRESH_MS   = 60 * 60 * 1000;
+const SEASONS      = ['winter', 'spring', 'summer', 'fall'];
+const YEAR         = 2026;
+
+// ── STATE ────────────────────────────────────────────────────────
+let DB            = [];
+let imgCache      = {};
+let activeSeason  = 'all';
+let activeStatus  = null;
+let activeStream  = null;
+let activeGenres  = new Set();
+let activeStudios = new Set();
+let searchTerm    = '';
+let sortMode      = 'default';
+
+// ── CACHE HELPERS ────────────────────────────────────────────────
+function saveCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
+}
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL_MS) return null;
+    return data;
+  } catch { return null; }
+}
+
+// ── JIKAN API ────────────────────────────────────────────────────
+async function fetchSeasonPage(season, year, page = 1) {
+  const res = await fetch(`${JIKAN_BASE}/seasons/${year}/${season}?filter=tv&page=${page}&limit=25`);
+  if (!res.ok) throw new Error(`Jikan ${res.status}`);
+  return res.json();
+}
+async function fetchOneSeason(season) {
+  const first = await fetchSeasonPage(season, YEAR, 1);
+  const pages = first.pagination?.last_visible_page ?? 1;
+  const all   = [...(first.data ?? [])];
+  for (let p = 2; p <= Math.min(pages, 4); p++) {
+    await delay(400);
+    try { const next = await fetchSeasonPage(season, YEAR, p); all.push(...(next.data ?? [])); }
+    catch { break; }
+  }
+  return all;
+}
+async function fetchAllSeasons() {
+  const results = [];
+  for (const season of SEASONS) {
+    try {
+      const items = await fetchOneSeason(season);
+      items.forEach(a => { if (!a.season) a.season = season; });
+      results.push(...items);
+      if (season !== 'fall') await delay(600);
+    } catch(e) { console.warn(`Failed to fetch ${season}:`, e.message); }
+  }
+  return results;
+}
+
+// ── NORMALISE ────────────────────────────────────────────────────
+// Cover-art fix: images are embedded in the season response and cached
+// immediately by malId — cardHTML() reads from cache, never fetches per-card.
+function normalise(raw) {
+  const season    = (raw.season || 'tba').toLowerCase();
+  const streaming = detectStream(raw);
+  const imageUrl  = raw.images?.jpg?.large_image_url || raw.images?.jpg?.image_url || null;
+  if (imageUrl && raw.mal_id) imgCache[raw.mal_id] = imageUrl;
+  const status   = normaliseStatus(raw.status);
+  const premiere = raw.aired?.from ? raw.aired.from.split('T')[0] : null;
+  return {
+    malId: raw.mal_id,
+    title: raw.title_english || raw.title,
+    jpTitle: raw.title_japanese || raw.title,
+    studio: raw.studios?.[0]?.name || 'Unknown',
+    season, premiere,
+    premiereDisplay: formatPremiere(premiere, raw.aired?.string),
+    airingDay: extractAiringDay(raw.broadcast?.string),
+    episodes: raw.episodes || 12,
+    genres: (raw.genres || []).map(g => g.name),
+    synopsis: raw.synopsis || 'No synopsis available.',
+    streaming: streaming.label,
+    streamClass: streaming.cls,
+    cast: [],
+    score: raw.score || null,
+    status, imageUrl,
+  };
+}
+function normaliseStatus(s) {
+  if (!s) return 'upcoming';
+  const l = s.toLowerCase();
+  if (l.includes('airing'))   return 'airing';
+  if (l.includes('finished')) return 'finished';
+  return 'upcoming';
+}
+function formatPremiere(iso, fallback) {
+  if (!iso) return fallback || 'TBA';
+  try { return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
+  catch { return fallback || 'TBA'; }
+}
+function extractAiringDay(s) {
+  if (!s) return 'TBA';
+  const days = ['Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays','Sundays'];
+  const m = days.find(d => s.includes(d));
+  return m ? m.slice(0,-1) : 'TBA';
+}
+function detectStream(raw) {
+  const all = [(raw.title_english||raw.title||''), ...(raw.producers||[]).map(p=>p.name)].join(' ').toLowerCase();
+  if (all.includes('netflix'))     return { label:'Netflix',    cls:'sc-nf'  };
+  if (all.includes('disney'))      return { label:'Disney+',    cls:'sc-dis' };
+  if (all.includes('hidive'))      return { label:'HIDIVE',     cls:'sc-hi'  };
+  if (all.includes('crunchyroll')) return { label:'Crunchyroll',cls:'sc-cr'  };
+  return                                  { label:'TBA',        cls:'sc-tba' };
+}
+
+// ── LOAD PIPELINE ────────────────────────────────────────────────
+async function loadData(forceRefresh = false) {
+  setLiveStatus('loading');
+  if (!forceRefresh) {
+    const cached = loadCache();
+    if (cached?.length) {
+      DB = cached;
+      cached.forEach(a => { if (a.imageUrl) imgCache[a.malId] = a.imageUrl; });
+      setLiveStatus('live');
+      buildUI(); render();
+      showToast('Loaded from cache — refreshing in background…');
+      fetchAndUpdate().catch(() => {});
+      return;
+    }
+  }
+  showSkeletons(12);
+  try { await fetchAndUpdate(); }
+  catch(e) { console.error('Initial load failed:', e); setLiveStatus('error'); showError(); }
+}
+async function fetchAndUpdate() {
+  const raw = await fetchAllSeasons();
+  if (!raw.length) throw new Error('No data returned');
+  DB = raw.filter(a => a.type==='TV'||a.type==='ONA'||!a.type).map(normalise).filter(a=>a.malId);
+  DB = [...new Map(DB.map(a=>[a.malId,a])).values()];
+  saveCache(DB);
+  setLiveStatus('live');
+  buildUI(); render();
+  showToast('Data refreshed from Jikan / MAL ✓');
+}
+setInterval(() => {
+  if (!document.hidden) fetchAndUpdate().catch(e => console.warn('Background refresh failed:', e));
+}, REFRESH_MS);
+
+// ── UI STATUS ────────────────────────────────────────────────────
+function setLiveStatus(state) {
+  const dot   = document.querySelector('.live-dot');
+  const label = document.querySelector('.live-label');
+  if (!dot||!label) return;
+  dot.className = 'live-dot';
+  if (state==='loading')      { dot.classList.add('loading'); label.textContent='Fetching from Jikan / MAL…'; }
+  else if (state==='error')   { dot.classList.add('error');   label.textContent='Data load failed'; }
+  else                        {                               label.textContent='Live via Jikan / MAL'; }
+}
+function showSkeletons(n) {
+  document.getElementById('grid').innerHTML = Array.from({length:n},()=>`
+    <div class="skeleton-card">
+      <div class="skeleton-poster"></div>
+      <div class="skeleton-body">
+        <div class="skeleton-line short"></div>
+        <div class="skeleton-line medium"></div>
+        <div class="skeleton-line short"></div>
+      </div>
+    </div>`).join('');
+}
+function showError() {
+  document.getElementById('grid').innerHTML=`
+    <div class="error-banner">⚠ Failed to load from Jikan API.
+      <button class="error-retry" onclick="loadData(true)">Retry</button>
+    </div>`;
+}
+let toastTimer;
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+// ── FILTER ───────────────────────────────────────────────────────
+function getFiltered() {
+  let list=[...DB];
+  if (activeSeason!=='all') list=list.filter(a=>a.season===activeSeason);
+  if (activeStatus)         list=list.filter(a=>a.status===activeStatus);
+  if (activeStream)         list=list.filter(a=>a.streaming.toLowerCase().includes(activeStream.toLowerCase()));
+  if (activeGenres.size)    list=list.filter(a=>[...activeGenres].every(g=>a.genres.includes(g)));
+  if (activeStudios.size)   list=list.filter(a=>activeStudios.has(a.studio));
+  if (searchTerm) {
+    const q=searchTerm.toLowerCase();
+    list=list.filter(a=>
+      a.title.toLowerCase().includes(q)||
+      a.studio.toLowerCase().includes(q)||
+      a.genres.some(g=>g.toLowerCase().includes(q))||
+      a.synopsis.toLowerCase().includes(q)
+    );
+  }
+  if (sortMode==='title')    list.sort((a,b)=>a.title.localeCompare(b.title));
+  else if (sortMode==='score')    list.sort((a,b)=>(b.score||0)-(a.score||0));
+  else if (sortMode==='premiere') list.sort((a,b)=>new Date(a.premiere||'2099')-new Date(b.premiere||'2099'));
+  return list;
+}
+
+// ── BUILD SIDEBAR ────────────────────────────────────────────────
+function buildUI() {
+  const genres=[...new Set(DB.flatMap(a=>a.genres))].sort();
+  const gf=document.getElementById('genreFilters');
+  gf.innerHTML=genres.map(g=>`<div class="g-chip" data-genre="${g}">${g}</div>`).join('');
+  gf.querySelectorAll('.g-chip').forEach(c=>c.addEventListener('click',()=>{
+    const g=c.dataset.genre;
+    if(activeGenres.has(g)){activeGenres.delete(g);c.classList.remove('active');}
+    else{activeGenres.add(g);c.classList.add('active');}
+    render();
+  }));
+  const studios=[...new Set(DB.map(a=>a.studio))].sort();
+  const sf=document.getElementById('studioFilters');
+  sf.innerHTML=studios.map(s=>`<div class="chip" data-studio="${s}">${s} <span class="chip-count">${DB.filter(a=>a.studio===s).length}</span></div>`).join('');
+  sf.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+    const s=c.dataset.studio;
+    const was=c.classList.contains('active');
+    sf.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    activeStudios.clear();
+    if(!was){activeStudios.add(s);c.classList.add('active');}
+    render();
+  }));
+  const el=id=>document.getElementById(id);
+  el('cnt-all').textContent=DB.length;
+  el('heroTotal').textContent=DB.length;
+  SEASONS.forEach(s=>{const e=el(`cnt-${s}`);if(e)e.textContent=DB.filter(a=>a.season===s).length;});
+}
+
+// ── CARD HTML ────────────────────────────────────────────────────
+const SEASON_BADGE  = {winter:'b-winter Winter',spring:'b-spring Spring',summer:'b-summer Summer',fall:'b-fall Fall',tba:'b-tba TBA'};
+const STATUS_RIBBON = {airing:'s-airing Airing',finished:'s-finished Finished',upcoming:'s-upcoming Upcoming'};
+
+function cardHTML(a,i) {
+  const [sbc,sbl]=(SEASON_BADGE[a.season]||'b-tba TBA').split(' ');
+  const [stc,stl]=(STATUS_RIBBON[a.status]||'s-upcoming Upcoming').split(' ');
+  const score=a.score?`<span class="score-badge">★ ${a.score}</span>`:'';
+  const genres=a.genres.slice(0,3).map(g=>`<span class="g-pill">${g}</span>`).join('');
+  const imgSrc=imgCache[a.malId]||'';
+  const imgAttr=imgSrc
+    ?`src="${imgSrc}" class="loaded"`
+    :`src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='267'%3E%3Crect fill='%231a1a22' width='200' height='267'/%3E%3C/svg%3E"`;
+  return `
+  <div class="anime-card" data-id="${a.malId}" style="animation-delay:${i*0.035}s">
+    <div class="poster-wrap">
+      <img ${imgAttr} alt="${escHtml(a.title)}" loading="lazy">
+      <div class="badge-row"><span class="season-badge ${sbc}">${sbl}</span>${score}</div>
+      <div class="status-ribbon ${stc}">${stl}</div>
+    </div>
+    <div class="card-body">
+      <div class="card-studio">${escHtml(a.studio)}</div>
+      <div class="card-title">${escHtml(a.title)}</div>
+      <div class="card-genres">${genres}</div>
+      <div class="card-footer">
+        <div class="premiere-info">
+          <div class="lbl">Premiere</div>
+          <div class="date">${a.premiereDisplay}</div>
+        </div>
+        <span class="stream-chip ${a.streamClass}">${a.streaming.split('/')[0].trim()}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render() {
+  const list=getFiltered();
+  const grid=document.getElementById('grid');
+  const titles={all:'ALL SEASONS',winter:'WINTER 2026',spring:'SPRING 2026',summer:'SUMMER 2026',fall:'FALL 2026'};
+  document.getElementById('resultsCount').textContent=`${list.length} series`;
+  document.getElementById('sectionTitle').textContent=searchTerm?`"${searchTerm.toUpperCase()}"`:titles[activeSeason]||'ALL SEASONS';
+  if(!list.length){grid.innerHTML='<div class="empty"><strong>404</strong><p>No anime match your filters.<br>Try adjusting or clearing them.</p></div>';return;}
+  grid.innerHTML=list.map((a,i)=>cardHTML(a,i)).join('');
+  grid.querySelectorAll('.anime-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      const a=DB.find(x=>x.malId===parseInt(card.dataset.id));
+      if(a) openModal(a);
+    });
+  });
+}
+
+// ── MODAL ────────────────────────────────────────────────────────
+function openModal(a) {
+  const today=new Date();
+  const imgSrc=imgCache[a.malId]||'';
+  const score=a.score?`<span class="meta-chip">★ MAL ${a.score}</span>`:'';
+  const statusLabel={airing:'Currently Airing',finished:'Finished Airing',upcoming:'Upcoming'}[a.status]||'';
+  const cast=(a.cast||[]).map(c=>`<div class="cast-card"><div class="cast-char">${escHtml(c.char)}</div><div class="cast-actor">${escHtml(c.actor)}</div></div>`).join('')
+    ||'<div style="font-family:\'Space Mono\',monospace;font-size:.6rem;color:var(--muted)">Cast data not available</div>';
+  let start;try{start=new Date(a.premiere);if(isNaN(start))throw 0;}catch{start=new Date('2026-04-01');}
+  const showEps=Math.min(a.episodes,13);
+  let epRows='';
+  for(let i=1;i<=showEps;i++){
+    const d=new Date(start);d.setDate(start.getDate()+(i-1)*7);
+    const ds=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const isNext=d>=today&&(i===1||new Date(start.getTime()+(i-2)*7*86400000)<today);
+    const isPast=d<today;
+    const cls=isNext?'ep-next':(isPast?'ep-aired':'ep-upcoming');
+    const lbl=isNext?'NEXT ▶':(isPast?'Aired':'Upcoming');
+    epRows+=`<tr class="${cls}"><td>EP ${i}</td><td>${lbl}</td><td>${ds}</td></tr>`;
+  }
+  if(a.episodes>13)epRows+=`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:.4rem;font-size:.55rem">+ ${a.episodes-13} more episodes</td></tr>`;
+  document.getElementById('modalGrid').innerHTML=`
+    <img class="modal-poster" src="${imgSrc}" alt="${escHtml(a.title)}" onerror="this.style.background='#1a1a22'" style="${imgSrc?'':'background:#1a1a22'}">
+    <div class="modal-body">
+      <div class="modal-studio">${escHtml(a.studio)} · ${a.season.charAt(0).toUpperCase()+a.season.slice(1)} 2026</div>
+      <h2 class="modal-title">${escHtml(a.title)}</h2>
+      <div class="modal-jp">${escHtml(a.jpTitle)}</div>
+      <div class="meta-row">
+        <span class="meta-chip">${a.episodes} Episodes</span>
+        <span class="meta-chip">Airs: ${a.airingDay}</span>
+        <span class="meta-chip">${statusLabel}</span>
+        <span class="meta-chip ${a.streamClass}">${a.streaming}</span>
+        ${score}
+      </div>
+      <p class="modal-synopsis">${escHtml(a.synopsis)}</p>
+      <div class="modal-section">Cast &amp; Voice Actors</div>
+      <div class="cast-grid">${cast}</div>
+      <div class="modal-section">Episode Schedule</div>
+      <table class="ep-table">
+        <thead><tr><th>EP</th><th>Status</th><th>Air Date</th></tr></thead>
+        <tbody>${epRows}</tbody>
+      </table>
+      <a class="mal-link" href="https://myanimelist.net/anime/${a.malId}" target="_blank">↗ View on MyAnimeList</a>
+    </div>`;
+  document.getElementById('overlay').classList.add('open');
+}
+
+// ── EVENTS ───────────────────────────────────────────────────────
+document.querySelectorAll('#seasonFilters .chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('#seasonFilters .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');activeSeason=c.dataset.season;render();
+}));
+document.querySelectorAll('#statusFilters .chip').forEach(c=>c.addEventListener('click',()=>{
+  const was=c.classList.contains('active');
+  document.querySelectorAll('#statusFilters .chip').forEach(x=>x.classList.remove('active'));
+  activeStatus=was?null:c.dataset.status;
+  if(!was)c.classList.add('active');render();
+}));
+document.querySelectorAll('#streamFilters .chip').forEach(c=>c.addEventListener('click',()=>{
+  const was=c.classList.contains('active');
+  document.querySelectorAll('#streamFilters .chip').forEach(x=>x.classList.remove('active'));
+  activeStream=was?null:c.dataset.stream;
+  if(!was)c.classList.add('active');render();
+}));
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input',e=>{
+  clearTimeout(searchTimer);
+  searchTimer=setTimeout(()=>{searchTerm=e.target.value.trim();render();},260);
+});
+document.getElementById('sortSelect').addEventListener('change',e=>{sortMode=e.target.value;render();});
+document.getElementById('clearBtn').addEventListener('click',()=>{
+  activeSeason='all';activeStatus=null;activeStream=null;
+  activeGenres.clear();activeStudios.clear();searchTerm='';sortMode='default';
+  document.getElementById('searchInput').value='';
+  document.getElementById('sortSelect').value='default';
+  document.querySelectorAll('.chip,.g-chip').forEach(c=>c.classList.remove('active'));
+  document.querySelector('[data-season="all"]').classList.add('active');
+  render();
+});
+document.getElementById('modalClose').addEventListener('click',()=>document.getElementById('overlay').classList.remove('open'));
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target===document.getElementById('overlay'))document.getElementById('overlay').classList.remove('open');});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('overlay').classList.remove('open');});
+
+// ── UTILS ────────────────────────────────────────────────────────
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// ── INIT ─────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
