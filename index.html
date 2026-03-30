@@ -680,17 +680,30 @@ footer a:hover { color: var(--paper); }
   background: rgba(34,197,94,0.2); border-color: #22c55e;
   transform: translateY(-1px); box-shadow: 0 4px 14px rgba(34,197,94,0.18);
 }
+.modal-watch-btn--dim {
+  background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12);
+  color: var(--muted); font-weight: 400;
+}
+.modal-watch-btn--dim:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: var(--paper); box-shadow: none; }
 .modal-watch-btn svg { flex-shrink: 0; }
 .modal-watch-btn .watch-badge-dot {
   width: 6px; height: 6px; border-radius: 50%;
   background: #22c55e; animation: blink 2s infinite; flex-shrink: 0;
 }
-/* Guest lock icon on watch btn */
-.modal-watch-btn.locked {
-  color: var(--muted); border-color: rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.03); cursor: not-allowed;
-  pointer-events: none; opacity: 0.55;
+
+/* Quick watch link on card for airing shows */
+.card-watch-link {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 4;
+  display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+  padding: 0.35rem; background: rgba(34,197,94,0.88);
+  font-family: 'Space Mono', monospace; font-size: 0.5rem;
+  letter-spacing: 0.08em; text-transform: uppercase; color: #fff;
+  font-weight: 700; text-decoration: none; opacity: 0;
+  transition: opacity 0.18s;
 }
+.anime-card:hover .card-watch-link { opacity: 1; }
+/* Always visible on touch devices */
+@media (hover: none) { .card-watch-link { opacity: 1; font-size: 0.46rem; } }
 
 /* Card-level "LIVE" badge for airing shows (signed-in only) */
 .card-live-badge {
@@ -702,20 +715,15 @@ footer a:hover { color: var(--paper); }
   animation: blink 2s infinite;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MOBILE LAYOUT  ≤ 768px
-   Strategy:
-   • Header collapses to logo + hamburger + user icon
-   • Sidebar becomes a slide-in drawer from the bottom
-   • Filter trigger bar sits above the grid (sticky)
-   • Spotlight collapses to a card-style tall hero
-   • Grid becomes 2-col on phone, 1-col on tiny screens
-   • Modal becomes full-screen bottom sheet
-   • Bottom nav bar for key actions
-   • Toast moves to top on mobile
-═══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+   MOBILE & TABLET RESPONSIVE  (≤ 900px and ≤ 768px)
+══════════════════════════════════════════════════════ */
 
-/* ── TABLET: 900px ── */
+/* Desktop-only elements hidden on mobile */
+.mob-menu-btn, .mob-search-btn, .mob-filter-bar,
+.mob-bottom-nav, .mob-drawer-overlay, .mob-search-bar { display: none; }
+
+/* ── TABLET 900px ── */
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
   .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
@@ -723,387 +731,231 @@ footer a:hover { color: var(--paper); }
   .modal-grid { grid-template-columns: 210px 1fr; }
 }
 
-/* ── MOBILE: 768px and below ── */
+/* ── MOBILE 768px ── */
 @media (max-width: 768px) {
 
-  /* ── HEADER ── */
-  header {
-    height: 54px;
-    padding: 0 1rem;
-    gap: 0;
-  }
-  .logo { font-size: 1.4rem; }
+  /* HEADER */
+  header { height: 54px; padding: 0 1rem; gap: 0.5rem; }
+  .logo { font-size: 1.35rem; }
   .live-label { display: none; }
   .continue-watching-btn { display: none !important; }
 
-  /* Hamburger menu button */
   .mob-menu-btn {
-    display: flex !important;
-    align-items: center; justify-content: center;
-    width: 36px; height: 36px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border);
-    border-radius: 2px; cursor: pointer;
-    flex-shrink: 0; gap: 0;
+    display: flex !important; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex-shrink: 0; cursor: pointer;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 2px;
   }
-  .mob-menu-btn span {
-    display: block; width: 16px; height: 1.5px;
-    background: var(--paper);
-    position: relative;
-    transition: all 0.22s;
-  }
-  .mob-menu-btn span::before,
-  .mob-menu-btn span::after {
-    content: ''; position: absolute; left: 0;
-    width: 16px; height: 1.5px; background: var(--paper);
-    transition: all 0.22s;
-  }
-  .mob-menu-btn span::before { top: -5px; }
-  .mob-menu-btn span::after  { top: 5px; }
-  .mob-menu-btn.open span { background: transparent; }
-  .mob-menu-btn.open span::before { top: 0; transform: rotate(45deg); }
-  .mob-menu-btn.open span::after  { top: 0; transform: rotate(-45deg); }
-
-  /* Search icon in header for mobile */
   .mob-search-btn {
-    display: flex !important;
-    align-items: center; justify-content: center;
-    width: 36px; height: 36px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border);
-    border-radius: 2px; cursor: pointer;
-    flex-shrink: 0;
+    display: flex !important; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex-shrink: 0; cursor: pointer;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 2px;
   }
+  .header-right { gap: 0.4rem; }
+  #userBtnLabel { display: none; }
+  .user-btn { padding: 0.35rem 0.5rem; }
 
-  .header-right { gap: 0.5rem; }
-  .user-btn span#userBtnLabel { display: none; }
-  .user-btn { padding: 0.35rem 0.55rem; }
-
-  /* ── MOBILE SEARCH BAR (below header, hidden by default) ── */
+  /* MOBILE SEARCH BAR */
   .mob-search-bar {
-    display: none;
-    position: sticky; top: 54px; z-index: 150;
-    background: rgba(10,10,15,0.97);
-    backdrop-filter: blur(16px);
+    display: none; position: sticky; top: 54px; z-index: 150;
+    background: rgba(10,10,15,0.98); backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border);
-    padding: 0.6rem 1rem;
+    padding: 0.55rem 1rem; gap: 0.5rem; align-items: center;
   }
-  .mob-search-bar.open { display: flex; gap: 0.5rem; align-items: center; }
+  .mob-search-bar.open { display: flex !important; }
   .mob-search-bar input {
-    flex: 1; background: rgba(255,255,255,0.07);
-    border: 1px solid var(--border); border-radius: 2px;
-    padding: 0.6rem 0.8rem; color: var(--paper);
-    font-family: 'Space Mono', monospace; font-size: 0.78rem;
-    outline: none;
+    flex: 1; background: rgba(255,255,255,0.07); border: 1px solid var(--border);
+    border-radius: 2px; padding: 0.58rem 0.8rem; color: var(--paper);
+    font-family: 'Space Mono', monospace; font-size: 0.76rem; outline: none;
   }
   .mob-search-bar input:focus { border-color: rgba(245,200,66,0.45); }
-  .mob-search-bar-close {
-    background: none; border: none; color: var(--muted);
-    font-size: 1.1rem; cursor: pointer; padding: 0.3rem;
-  }
+  .mob-search-bar-close { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 0.2rem; }
 
-  /* ── HERO ── */
-  .hero {
-    padding: 1.5rem 1rem 1.2rem;
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-  .hero::after { font-size: clamp(5rem, 28vw, 9rem); }
-  .hero-title { font-size: clamp(1.8rem, 8vw, 2.8rem); }
-  .hero-sub { font-size: 0.58rem; }
-  .hero-stats { gap: 1.2rem; }
-  .stat-n { font-size: 2rem; }
-  .stat-l { font-size: 0.52rem; }
+  /* HERO */
+  .hero { padding: 1.4rem 1rem 1.1rem; gap: 0.6rem; }
+  .hero::after { font-size: clamp(4rem, 24vw, 7rem); }
+  .hero-title { font-size: clamp(1.7rem, 7.5vw, 2.6rem); }
+  .hero-sub { font-size: 0.56rem; }
+  .hero-stats { gap: 1rem; }
+  .stat-n { font-size: 1.9rem; }
+  .stat-l { font-size: 0.5rem; }
 
-  /* ── SPOTLIGHT ── */
-  #spotlight {
-    height: clamp(260px, 72vw, 360px);
-  }
-  .spotlight-poster {
-    right: 3%;
-    height: 82%;
-    max-width: 110px;
-  }
-  .spotlight-content {
-    padding: 1.1rem 1rem 2.2rem;
-    max-width: calc(100% - 120px);
-  }
-  .spotlight-title { font-size: clamp(1.3rem, 6vw, 2rem); }
+  /* SPOTLIGHT */
+  #spotlight { height: clamp(240px, 68vw, 340px); }
+  .spotlight-poster { right: 2%; height: 80%; max-width: 100px; }
+  .spotlight-content { padding: 1rem 1rem 2rem; max-width: calc(100% - 112px); }
+  .spotlight-title { font-size: clamp(1.2rem, 5.5vw, 1.8rem); }
   .spotlight-synopsis { display: none; }
-  .spotlight-meta { gap: 0.22rem; }
-  .spotlight-actions { gap: 0.4rem; }
-  .spot-btn { font-size: 0.52rem; padding: 0.42rem 0.75rem; }
-  .spot-score { width: 36px; height: 36px; }
-  .spot-score-n { font-size: 0.75rem; }
-  .spot-nav { left: 1rem; bottom: 0.7rem; }
-  .spot-arrows { right: 0.8rem; bottom: 0.6rem; }
-  .spot-arrow { width: 24px; height: 24px; font-size: 0.72rem; }
+  .spotlight-eyebrow { font-size: 0.5rem; margin-bottom: 0.35rem; }
+  .spotlight-studio { font-size: 0.5rem; margin-bottom: 0.4rem; }
+  .spotlight-meta { gap: 0.2rem; margin-bottom: 0.55rem; }
+  .spotlight-chip { font-size: 0.46rem; padding: 0.14rem 0.35rem; }
+  .spotlight-actions { gap: 0.35rem; }
+  .spot-btn { font-size: 0.5rem; padding: 0.38rem 0.68rem; }
+  .spot-score { width: 34px; height: 34px; }
+  .spot-score-n { font-size: 0.7rem; }
+  .spot-nav { left: 0.8rem; bottom: 0.6rem; gap: 0.4rem; }
+  .spot-dot { width: 4px; height: 4px; }
+  .spot-dot.active { width: 14px; }
+  .spot-arrows { right: 0.7rem; bottom: 0.55rem; gap: 0.22rem; }
+  .spot-arrow { width: 22px; height: 22px; font-size: 0.7rem; }
+  .spot-counter { font-size: 0.5rem; top: 0.6rem; right: 0.7rem; }
 
-  /* ── SCHEDULE STRIP ── */
-  .sched-strip { padding: 0.5rem 0.8rem; }
-  .sched-day { min-width: 78px; padding: 0 0.6rem; }
-  .sched-show { font-size: 0.48rem; max-width: 70px; }
+  /* SCHEDULE */
+  .sched-strip { padding: 0.45rem 0.75rem; }
+  .sched-day { min-width: 72px; padding: 0 0.5rem; }
+  .sched-show, .sched-empty, .sched-day-lbl { font-size: 0.46rem; }
 
-  /* ── SHELL — single col, sidebar hidden by default ── */
-  .shell {
-    grid-template-columns: 1fr;
-    position: relative;
-  }
-
-  /* ── SIDEBAR = bottom drawer on mobile ── */
-  .sidebar {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    top: auto;
-    z-index: 250;
-    height: 80vh;
-    max-height: 80vh;
-    background: #13131a;
-    border: none;
-    border-top: 2px solid var(--gold);
-    border-radius: 16px 16px 0 0;
-    padding: 0 1rem 5rem;
-    overflow-y: auto;
-    transform: translateY(100%);
-    transition: transform 0.32s cubic-bezier(0.32,0.72,0,1);
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-  .sidebar.mob-open {
-    transform: translateY(0);
-  }
-
-  /* Drawer handle */
-  .sidebar::before {
-    content: '';
-    display: block;
-    width: 36px; height: 4px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 2px;
-    margin: 0.75rem auto 1rem;
-    flex-shrink: 0;
-  }
-
-  /* Overlay behind drawer */
-  .mob-drawer-overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
-    z-index: 240;
-  }
-  .mob-drawer-overlay.open { display: block; }
-
-  /* ── STICKY FILTER TRIGGER BAR (replaces sidebar on mobile) ── */
+  /* MOBILE FILTER BAR */
   .mob-filter-bar {
-    display: flex !important;
-    position: sticky; top: 54px; z-index: 140;
-    background: rgba(10,10,15,0.97);
-    backdrop-filter: blur(16px);
+    display: flex !important; position: sticky; top: 54px; z-index: 140;
+    background: rgba(10,10,15,0.98); backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border);
-    padding: 0.5rem 1rem;
-    gap: 0.5rem;
-    overflow-x: auto;
-    scrollbar-width: none;
+    padding: 0.4rem 0.85rem; gap: 0.38rem; overflow-x: auto; scrollbar-width: none;
   }
   .mob-filter-bar::-webkit-scrollbar { display: none; }
 
   .mob-filter-trigger {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    font-family: 'Space Mono', monospace; font-size: 0.58rem;
-    letter-spacing: 0.07em; text-transform: uppercase;
-    padding: 0.35rem 0.75rem; border-radius: 2px; cursor: pointer;
-    border: 1px solid var(--border); color: var(--muted);
-    background: rgba(255,255,255,0.04); white-space: nowrap;
-    transition: all 0.14s; flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 0.32rem; flex-shrink: 0;
+    font-family: 'Space Mono', monospace; font-size: 0.54rem; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 0.3rem 0.65rem; border-radius: 2px; cursor: pointer;
+    border: 1px solid var(--border); color: var(--muted); background: rgba(255,255,255,0.04);
+    white-space: nowrap; transition: all 0.14s;
   }
-  .mob-filter-trigger:hover,
   .mob-filter-trigger.has-filter { color: var(--gold); border-color: rgba(245,200,66,0.35); background: rgba(245,200,66,0.07); }
-  .mob-filter-trigger svg { flex-shrink: 0; }
 
-  /* Active filter count badge */
   .mob-filter-badge {
-    background: var(--red); color: #fff;
-    font-size: 0.45rem; font-weight: 700;
-    border-radius: 50%; width: 14px; height: 14px;
-    display: none; align-items: center; justify-content: center;
+    background: var(--red); color: #fff; font-size: 0.42rem; font-weight: 700;
+    border-radius: 50%; width: 13px; height: 13px; display: none;
+    align-items: center; justify-content: center;
   }
   .mob-filter-badge.show { display: flex; }
 
-  /* Season quick-filters in the bar */
   .mob-season-pill {
-    display: inline-flex; align-items: center;
-    font-family: 'Space Mono', monospace; font-size: 0.55rem;
-    letter-spacing: 0.05em; text-transform: uppercase;
-    padding: 0.3rem 0.6rem; border-radius: 2px; cursor: pointer;
+    display: inline-flex; align-items: center; flex-shrink: 0;
+    font-family: 'Space Mono', monospace; font-size: 0.52rem; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 0.26rem 0.55rem; border-radius: 2px; cursor: pointer;
     border: 1px solid rgba(255,255,255,0.08); color: var(--muted);
-    background: rgba(255,255,255,0.03); white-space: nowrap;
-    transition: all 0.14s; flex-shrink: 0;
+    background: rgba(255,255,255,0.03); white-space: nowrap; transition: all 0.13s;
   }
   .mob-season-pill.active { color: var(--gold); border-color: rgba(245,200,66,0.4); background: rgba(245,200,66,0.08); }
 
-  /* ── MAIN AREA ── */
-  .main { padding: 0.9rem 0.75rem 5.5rem; }
-
-  .results-bar {
-    margin-bottom: 0.9rem;
-    gap: 0.5rem;
+  /* SIDEBAR → BOTTOM DRAWER */
+  .shell { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed; bottom: 0; left: 0; right: 0; top: auto;
+    z-index: 250; height: 78vh; max-height: 78vh;
+    background: #13131a; border: none; border-top: 2px solid var(--gold);
+    border-radius: 14px 14px 0 0; padding: 0 1rem 5.5rem;
+    overflow-y: auto; transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
   }
-  .results-bar h2 { font-size: 1.1rem; }
-  .results-count { font-size: 0.55rem; }
-  .sort-wrap { margin-left: auto; }
+  .sidebar.mob-open { transform: translateY(0); }
+  .sidebar::before {
+    content: ''; display: block; width: 34px; height: 4px;
+    background: rgba(255,255,255,0.18); border-radius: 2px; margin: 0.7rem auto 0.9rem;
+  }
+  .sidebar .search-box:first-of-type { display: none; }
+
+  /* DRAWER OVERLAY */
+  .mob-drawer-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(3px); z-index: 240;
+  }
+  .mob-drawer-overlay.open { display: block; }
+
+  /* MAIN */
+  .main { padding: 0.85rem 0.7rem 5.5rem; }
+  .results-bar { margin-bottom: 0.85rem; gap: 0.4rem; }
+  .results-bar h2 { font-size: 1.05rem; }
+  .results-count { font-size: 0.52rem; }
   .sort-label { display: none; }
-  #sortSelect { font-size: 0.58rem; padding: 0.28rem 0.5rem; }
+  #sortSelect { font-size: 0.55rem; padding: 0.25rem 0.4rem; }
+  .watchlist-toggle { font-size: 0.5rem; padding: 0.25rem 0.5rem; }
 
-  /* Watchlist toggle compact */
-  .watchlist-toggle { font-size: 0.52rem; padding: 0.28rem 0.55rem; }
+  /* 2-COLUMN GRID */
+  .anime-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+  .card-body { padding: 0.55rem; gap: 0.26rem; }
+  .card-title { font-size: 0.82rem; }
+  .card-studio { font-size: 0.44rem; }
+  .g-pill { font-size: 0.4rem; padding: 0.1rem 0.26rem; }
+  .card-footer { padding-top: 0.4rem; }
+  .premiere-info .date { font-size: 0.48rem; }
+  .premiere-info .lbl { font-size: 0.4rem; }
+  .stream-chip { font-size: 0.4rem; padding: 0.1rem 0.26rem; }
+  .countdown { font-size: 0.46rem; }
+  .score-badge { font-size: 0.5rem; padding: 0.15rem 0.3rem; }
 
-  /* ── GRID ── 2 columns on mobile ── */
-  .anime-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.65rem;
-  }
-
-  /* Tighten card body text */
-  .card-title { font-size: 0.85rem; }
-  .card-studio { font-size: 0.46rem; }
-  .g-pill { font-size: 0.42rem; padding: 0.12rem 0.28rem; }
-  .card-body { padding: 0.6rem; gap: 0.28rem; }
-  .card-footer { padding-top: 0.45rem; }
-  .premiere-info .date { font-size: 0.5rem; }
-  .premiere-info .lbl { font-size: 0.42rem; }
-  .stream-chip { font-size: 0.42rem; padding: 0.12rem 0.28rem; }
-  .countdown { font-size: 0.48rem; }
-
-  /* ── MODAL → full-screen bottom sheet ── */
-  .overlay {
-    align-items: flex-end;
-    padding: 0;
-  }
+  /* MODAL → BOTTOM SHEET */
+  .overlay { align-items: flex-end; padding: 0; }
   .modal {
-    max-width: 100%;
-    width: 100%;
-    max-height: 94vh;
-    border-radius: 16px 16px 0 0;
-    border: none;
-    border-top: 1px solid var(--border);
-    transform: translateY(100%);
+    max-width: 100%; width: 100%; max-height: 93vh;
+    border-radius: 14px 14px 0 0; border: none;
+    border-top: 1px solid var(--border); transform: translateY(100%);
   }
   .overlay.open .modal { transform: translateY(0); }
-
-  .modal-grid { grid-template-columns: 1fr; }
-
-  /* Poster becomes a banner behind a gradient at the top */
-  .modal-poster {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    object-position: top;
-    min-height: unset;
-    border-radius: 16px 16px 0 0;
-    position: relative;
-    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%);
-    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%);
-  }
-
-  /* Drag handle on modal */
   .modal::before {
-    content: '';
-    display: block;
-    width: 36px; height: 4px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 2px;
-    margin: 0.65rem auto -0.2rem;
+    content: ''; display: block; width: 34px; height: 4px;
+    background: rgba(255,255,255,0.18); border-radius: 2px; margin: 0.6rem auto -0.1rem;
   }
-
-  .modal-body { padding: 1rem 1rem 2rem; }
-  .modal-title { font-size: 1.5rem; }
-  .modal-jp { font-size: 0.68rem; }
-  .meta-chip { font-size: 0.52rem; padding: 0.22rem 0.45rem; }
-  .modal-synopsis { font-size: 0.74rem; }
-  .modal-section { font-size: 0.54rem; }
-  .cast-grid { grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); gap: 0.3rem; }
-  .cast-char { font-size: 0.64rem; }
-  .cast-actor { font-size: 0.5rem; }
-  .ep-table { font-size: 0.58rem; }
-  .ep-table td, .ep-table th { padding: 0.3rem 0.38rem; }
-  .mal-link { font-size: 0.55rem; padding: 0.38rem 0.75rem; }
-  .modal-fav-btn { font-size: 0.55rem; padding: 0.38rem 0.75rem; }
-
-  .modal-close {
-    top: 0.7rem; right: 0.7rem;
-    font-size: 0.62rem; padding: 0.32rem 0.6rem;
+  .modal-grid { grid-template-columns: 1fr; }
+  .modal-poster {
+    width: 100%; height: 200px; object-fit: cover; object-position: top;
+    min-height: unset; border-radius: 14px 14px 0 0;
+    mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
   }
+  .modal-body { padding: 0.9rem 1rem 1.5rem; }
+  .modal-title { font-size: 1.45rem; }
+  .modal-jp { font-size: 0.65rem; }
+  .meta-chip { font-size: 0.5rem; padding: 0.2rem 0.42rem; }
+  .modal-synopsis { font-size: 0.72rem; }
+  .cast-grid { grid-template-columns: repeat(auto-fill, minmax(105px,1fr)); gap: 0.28rem; }
+  .cast-char { font-size: 0.62rem; }
+  .cast-actor { font-size: 0.48rem; }
+  .ep-table { font-size: 0.56rem; }
+  .ep-table td, .ep-table th { padding: 0.28rem 0.35rem; }
+  .modal-close { top: 0.65rem; right: 0.65rem; font-size: 0.6rem; padding: 0.3rem 0.55rem; }
+  .mal-link { font-size: 0.53rem; padding: 0.36rem 0.7rem; }
+  .modal-fav-btn { font-size: 0.53rem; padding: 0.36rem 0.7rem; }
+  .modal-watch-btn { font-size: 0.53rem; padding: 0.36rem 0.7rem; }
+  .trailer-wrap { margin-bottom: 0.4rem; }
 
-  /* ── TRAILER ── */
-  .trailer-wrap { margin-bottom: 0.5rem; }
-  .play-btn { width: 42px; height: 42px; }
-  .play-btn svg { width: 16px; height: 16px; }
-
-  /* ── BOTTOM NAVIGATION BAR ── */
+  /* BOTTOM NAV */
   .mob-bottom-nav {
-    display: flex !important;
-    position: fixed; bottom: 0; left: 0; right: 0;
-    height: 56px; z-index: 230;
-    background: rgba(13,13,20,0.97);
-    backdrop-filter: blur(20px);
+    display: flex !important; position: fixed; bottom: 0; left: 0; right: 0;
+    height: 54px; z-index: 230;
+    background: rgba(10,10,15,0.98); backdrop-filter: blur(20px);
     border-top: 1px solid var(--border);
   }
   .mob-nav-btn {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 0.2rem; cursor: pointer;
-    font-family: 'Space Mono', monospace; font-size: 0.42rem;
-    letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--muted); border: none; background: none;
-    transition: color 0.14s;
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 0.18rem; cursor: pointer;
+    font-family: 'Space Mono', monospace; font-size: 0.4rem;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--muted); border: none; background: none; transition: color 0.14s;
+    -webkit-tap-highlight-color: transparent;
   }
-  .mob-nav-btn:hover, .mob-nav-btn.active { color: var(--gold); }
-  .mob-nav-btn svg { width: 18px; height: 18px; }
-  .mob-nav-btn .mob-nav-label { margin-top: 0.1rem; }
+  .mob-nav-btn:active, .mob-nav-btn.active { color: var(--gold); }
+  .mob-nav-btn svg { width: 17px; height: 17px; }
 
-  /* ── TOAST → top on mobile ── */
-  .toast {
-    bottom: auto;
-    top: 62px;
-    right: 1rem; left: 1rem;
-    text-align: center;
-    transform: translateY(-20px);
-  }
+  /* TOAST → top */
+  .toast { bottom: auto; top: 60px; right: 1rem; left: 1rem; text-align: center; transform: translateY(-16px); }
   .toast.show { transform: translateY(0); }
 
-  /* ── FOOTER ── */
-  footer {
-    flex-direction: column; align-items: flex-start;
-    padding: 1rem; gap: 0.5rem; font-size: 0.52rem;
-    padding-bottom: 4rem; /* clear bottom nav */
-  }
-  .footer-links { flex-wrap: wrap; gap: 0.75rem; }
-
-  /* ── AUTH MODAL ── */
-  .auth-modal { padding: 1.5rem 1.2rem; }
-
-  /* Hide desktop search in sidebar (uses mob-search-bar instead) */
-  .sidebar .search-box:first-child { display: none; }
+  /* FOOTER */
+  footer { flex-direction: column; align-items: flex-start; padding: 1rem; gap: 0.45rem; font-size: 0.5rem; padding-bottom: 4rem; }
+  .footer-links { flex-wrap: wrap; gap: 0.6rem; }
 
 } /* end 768px */
 
-/* ── TINY PHONES: 380px and below ── */
+/* TINY PHONES ≤ 380px */
 @media (max-width: 380px) {
-  .anime-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
-  .card-title { font-size: 0.78rem; }
-  .spotlight-poster { max-width: 85px; }
-  .spotlight-content { max-width: calc(100% - 95px); }
+  .anime-grid { gap: 0.45rem; }
+  .card-title { font-size: 0.75rem; }
+  .spotlight-poster { max-width: 80px; }
+  .spotlight-content { max-width: calc(100% - 88px); }
 }
-
-/* ── ELEMENTS HIDDEN ON MOBILE, SHOWN ON DESKTOP ── */
-.mob-menu-btn,
-.mob-search-btn,
-.mob-filter-bar,
-.mob-bottom-nav,
-.mob-drawer-overlay,
-.mob-search-bar { display: none; }
-/* (shown via display:flex/block inside the 768px query above) */
 </style>
 </head>
 <body>
@@ -1135,11 +987,9 @@ footer a:hover { color: var(--paper); }
 
 <header>
   <a class="logo" href="#"><span>Ani</span>Tracker</a>
-  <!-- Mobile hamburger (hidden on desktop via CSS) -->
   <button class="mob-menu-btn" id="mobMenuBtn" aria-label="Open filters" onclick="toggleMobDrawer()">
-    <span></span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
-  <!-- Mobile search icon -->
   <button class="mob-search-btn" id="mobSearchBtn" aria-label="Search" onclick="toggleMobSearch()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
   </button>
@@ -1161,29 +1011,27 @@ footer a:hover { color: var(--paper); }
   </div>
 </header>
 
-<!-- ══ MOBILE SEARCH BAR (slides in below header) ══ -->
+<!-- MOBILE SEARCH BAR -->
 <div class="mob-search-bar" id="mobSearchBar">
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-  <input type="text" id="mobSearchInput" placeholder="Search anime, studio, genre…" oninput="syncMobSearch(this.value)">
+  <input type="text" id="mobSearchInput" placeholder="Search anime, studio, genre…" autocomplete="off">
   <button class="mob-search-bar-close" onclick="toggleMobSearch()">✕</button>
 </div>
 
-<!-- ══ MOBILE FILTER TRIGGER BAR ══ -->
+<!-- MOBILE FILTER BAR -->
 <div class="mob-filter-bar" id="mobFilterBar">
   <button class="mob-filter-trigger" id="mobFilterTrigger" onclick="toggleMobDrawer()">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="16" y2="12"/><line x1="4" y1="18" x2="12" y2="18"/></svg>
-    Filters
-    <span class="mob-filter-badge" id="mobFilterBadge">0</span>
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+    Filters <span class="mob-filter-badge" id="mobFilterBadge">0</span>
   </button>
-  <!-- Season quick pills (synced to main sidebar) -->
-  <div class="mob-season-pill active" data-mob-season="all" onclick="setMobSeason('all')">All</div>
-  <div class="mob-season-pill" data-mob-season="winter" onclick="setMobSeason('winter')">❄ Winter</div>
-  <div class="mob-season-pill" data-mob-season="spring" onclick="setMobSeason('spring')">🌸 Spring</div>
-  <div class="mob-season-pill" data-mob-season="summer" onclick="setMobSeason('summer')">☀ Summer</div>
-  <div class="mob-season-pill" data-mob-season="fall" onclick="setMobSeason('fall')">🍂 Fall</div>
+  <div class="mob-season-pill active" data-mob-season="all"    onclick="setMobSeason('all')">All</div>
+  <div class="mob-season-pill"        data-mob-season="winter"  onclick="setMobSeason('winter')">❄ Winter</div>
+  <div class="mob-season-pill"        data-mob-season="spring"  onclick="setMobSeason('spring')">🌸 Spring</div>
+  <div class="mob-season-pill"        data-mob-season="summer"  onclick="setMobSeason('summer')">☀ Summer</div>
+  <div class="mob-season-pill"        data-mob-season="fall"    onclick="setMobSeason('fall')">🍂 Fall</div>
 </div>
 
-<!-- ══ DRAWER OVERLAY ══ -->
+<!-- DRAWER BACKDROP -->
 <div class="mob-drawer-overlay" id="mobDrawerOverlay" onclick="toggleMobDrawer()"></div>
 
 
@@ -1862,6 +1710,13 @@ function cardHTML(a,i) {
     premiereHTML = `<div class="date">${a.premiereDisplay}</div>`;
   }
 
+  const watchCardLink = (a.status === 'airing')
+    ? `<a class="card-watch-link" href="https://aniwatchtv.to/search?keyword=${encodeURIComponent(a.title)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+        Watch on AniWatch
+       </a>`
+    : '';
+
   return `
   <div class="anime-card${faved?' is-favorited':''}" data-id="${a.malId}" style="animation-delay:${i*0.035}s">
     <div class="poster-wrap" style="background:${placeholderColor}">
@@ -1869,6 +1724,7 @@ function cardHTML(a,i) {
       <div class="badge-row"><span class="season-badge ${sbc}">${sbl}</span>${score}</div>
       ${(a.status==='airing'&&currentUser)?'<div class="card-live-badge">● Live</div>':''}
       <div class="status-ribbon ${stc}">${stl}</div>
+      ${watchCardLink}
     </div>
     <button class="heart-btn${faved?' active':''}" data-id="${a.malId}" title="${faved?'Remove from watchlist':'Add to watchlist'}" onclick="event.stopPropagation();toggleFav(${a.malId})">${faved?'♥':'♡'}</button>
     <div class="watched-pip"><div class="watched-pip-fill" style="width:${pipWidth}"></div></div>
@@ -1916,28 +1772,22 @@ function render() {
 
 // ── WATCH NOW HELPER ─────────────────────────────────────────────
 function buildWatchBtn(a) {
-  // Only for currently airing 2026 shows
-  if (a.status !== 'airing') return '';
-
-  // Must be signed in
-  if (!currentUser) return '';
-
-  // Build AniWatch search URL — search by title gives best results
-  // The continue-watching page is the user's hub once they've started a show
+  // Show for airing AND upcoming shows (upcoming = user can bookmark)
+  if (a.status === 'finished') return '';
   const searchTitle = encodeURIComponent(a.title || '');
-  const aniWatchSearch = `https://aniwatchtv.to/search?keyword=${searchTitle}`;
-  const continueWatching = 'https://aniwatchtv.to/user/continue-watching';
-
+  const href = a.status === 'airing'
+    ? `https://aniwatchtv.to/search?keyword=${searchTitle}`
+    : `https://myanimelist.net/anime/${a.malId}`;
+  const label = a.status === 'airing' ? 'Watch Now on AniWatch' : 'Track on MAL';
+  const icon = a.status === 'airing'
+    ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21"/></svg>`
+    : `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
   return `
-    <a class="modal-watch-btn"
-       href="${aniWatchSearch}"
-       target="_blank"
-       rel="noopener noreferrer"
-       title="Watch ${escHtml(a.title)} on AniWatch"
-       onclick="event.stopPropagation()">
-      <div class="watch-badge-dot"></div>
-      Watch Now
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    <a class="modal-watch-btn${a.status !== 'airing' ? ' modal-watch-btn--dim' : ''}"
+       href="${href}" target="_blank" rel="noopener noreferrer"
+       title="${label}" onclick="event.stopPropagation()">
+      ${a.status === 'airing' ? '<div class="watch-badge-dot"></div>' : ''}
+      ${label} ${icon}
     </a>`;
 }
 
@@ -2134,181 +1984,8 @@ function flushPendingImages() {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MOBILE UI LOGIC
-// ═══════════════════════════════════════════════════════════════
-
-// ── Drawer (sidebar) ────────────────────────────────────────────
-function toggleMobDrawer(forceClose) {
-  const sidebar  = document.querySelector('.sidebar');
-  const overlay  = document.getElementById('mobDrawerOverlay');
-  const menuBtn  = document.getElementById('mobMenuBtn');
-  const bnFilter = document.getElementById('bnFilter');
-  if (!sidebar) return;
-  const isOpen = sidebar.classList.contains('mob-open');
-  if (forceClose || isOpen) {
-    sidebar.classList.remove('mob-open');
-    overlay.classList.remove('open');
-    menuBtn?.classList.remove('open');
-    bnFilter?.classList.remove('active');
-    document.body.style.overflow = '';
-  } else {
-    sidebar.classList.add('mob-open');
-    overlay.classList.add('open');
-    menuBtn?.classList.add('open');
-    bnFilter?.classList.add('active');
-    document.body.style.overflow = 'hidden';
-    // Add close button inside drawer if not already there
-    if (!sidebar.querySelector('.mob-drawer-close')) {
-      const btn = document.createElement('button');
-      btn.className = 'mob-drawer-close';
-      btn.innerHTML = '✕ Close';
-      btn.style.cssText = `
-        display:block; width:100%; margin-top:1rem; padding:0.65rem;
-        background:rgba(255,255,255,0.06); border:1px solid var(--border);
-        border-radius:2px; color:var(--muted); font-family:'Space Mono',monospace;
-        font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase;
-        cursor:pointer;
-      `;
-      btn.onclick = () => toggleMobDrawer(true);
-      sidebar.appendChild(btn);
-    }
-  }
-}
-
-// Close drawer on Escape
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') toggleMobDrawer(true);
-});
-
-// ── Mobile search bar ────────────────────────────────────────────
-function toggleMobSearch() {
-  const bar    = document.getElementById('mobSearchBar');
-  const bnSrch = document.getElementById('bnSearch');
-  if (!bar) return;
-  const isOpen = bar.classList.contains('open');
-  bar.classList.toggle('open', !isOpen);
-  bnSrch?.classList.toggle('active', !isOpen);
-  if (!isOpen) {
-    setTimeout(() => document.getElementById('mobSearchInput')?.focus(), 80);
-  } else {
-    // clear search on close
-    const inp = document.getElementById('mobSearchInput');
-    if (inp) { inp.value = ''; syncMobSearch(''); }
-  }
-}
-
-function syncMobSearch(val) {
-  // Sync to the sidebar searchInput and trigger render
-  const desktop = document.getElementById('searchInput');
-  if (desktop) desktop.value = val;
-  searchTerm = val.trim();
-  render();
-}
-
-// ── Mobile season quick-filter pills ─────────────────────────────
-function setMobSeason(season) {
-  // Sync to desktop sidebar season pills
-  activeSeason = season;
-  document.querySelectorAll('[data-mob-season]').forEach(el => {
-    el.classList.toggle('active', el.dataset.mobSeason === season);
-  });
-  // Also sync desktop season pills
-  document.querySelectorAll('[data-season]').forEach(el => {
-    el.classList.toggle('active', el.dataset.season === season);
-  });
-  const titles = { all:'ALL SEASONS', winter:'WINTER 2026', spring:'SPRING 2026', summer:'SUMMER 2026', fall:'FALL 2026' };
-  document.getElementById('sectionTitle').textContent = titles[season] || 'ALL SEASONS';
-  render();
-}
-
-// ── Keep mob season pills in sync when desktop pills clicked ─────
-const _origRender = render;
-function render() {
-  _origRender();
-  // Sync mob season pills
-  document.querySelectorAll('[data-mob-season]').forEach(el => {
-    el.classList.toggle('active', el.dataset.mobSeason === activeSeason);
-  });
-  // Update filter badge count
-  updateMobFilterBadge();
-  // Update bottom nav account label
-  const lbl = document.getElementById('bnAccountLabel');
-  if (lbl) lbl.textContent = currentUser ? currentUser.username.slice(0,6) : 'Account';
-  const bnAcc = document.getElementById('bnAccount');
-  if (bnAcc) bnAcc.classList.toggle('active', !!currentUser);
-}
-
-function updateMobFilterBadge() {
-  const count = (activeStatus ? 1 : 0) + (activeStream ? 1 : 0) +
-                activeGenres.size + activeStudios.size + (minScore > 0 ? 1 : 0) +
-                (activeSeason !== 'all' ? 1 : 0);
-  const badge   = document.getElementById('mobFilterBadge');
-  const trigger = document.getElementById('mobFilterTrigger');
-  if (badge) {
-    badge.textContent = count;
-    badge.classList.toggle('show', count > 0);
-  }
-  if (trigger) trigger.classList.toggle('has-filter', count > 0);
-}
-
-// ── Bottom nav helpers ───────────────────────────────────────────
-function mobNavHome() {
-  // Reset all filters and scroll to top
-  document.getElementById('clearBtn')?.click();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('bnHome')?.classList.add('active');
-}
-
-function mobNavWatchlist() {
-  toggleWatchlistView();
-  document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('bnWatchlist');
-  if (btn) btn.classList.toggle('active', showingWatchlist);
-}
-
-// ── Touch swipe to dismiss drawer ────────────────────────────────
-(function() {
-  let startY = 0;
-  document.addEventListener('touchstart', e => {
-    startY = e.touches[0].clientY;
-  }, { passive: true });
-  document.addEventListener('touchend', e => {
-    const diff = e.changedTouches[0].clientY - startY;
-    const sidebar = document.querySelector('.sidebar');
-    if (diff > 80 && sidebar?.classList.contains('mob-open')) {
-      toggleMobDrawer(true);
-    }
-  }, { passive: true });
-})();
-
-// ── Touch swipe on modal to dismiss ─────────────────────────────
-(function() {
-  let startY = 0;
-  const modal = document.getElementById('modal');
-  if (!modal) return;
-  modal.addEventListener('touchstart', e => {
-    startY = e.touches[0].clientY;
-  }, { passive: true });
-  modal.addEventListener('touchend', e => {
-    const diff = e.changedTouches[0].clientY - startY;
-    if (diff > 90) document.getElementById('overlay').classList.remove('open');
-  }, { passive: true });
-})();
-
-// ── Also close drawer when a filter is applied on mobile ─────────
-(function() {
-  // Patch filter chip clicks to close drawer after 300ms
-  const origClearBtn = document.getElementById('clearBtn');
-  if (origClearBtn) {
-    origClearBtn.addEventListener('click', () => {
-      updateMobFilterBadge();
-    });
-  }
-})();
-
-
+// ── UTILS ────────────────────────────────────────────────────────
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // ── SIDEBAR COLLAPSE ─────────────────────────────────────────────
@@ -2505,29 +2182,170 @@ setTimeout(() => {
 
 loadData();
 </script>
+
 <!-- ══ MOBILE BOTTOM NAV ══ -->
-<nav class="mob-bottom-nav" id="mobBottomNav" aria-label="Mobile navigation">
+<nav class="mob-bottom-nav" id="mobBottomNav">
   <button class="mob-nav-btn active" id="bnHome" onclick="mobNavHome()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
-    <span class="mob-nav-label">Home</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21V12h6v9"/></svg>
+    Home
   </button>
   <button class="mob-nav-btn" id="bnSearch" onclick="toggleMobSearch()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <span class="mob-nav-label">Search</span>
+    Search
   </button>
   <button class="mob-nav-btn" id="bnFilter" onclick="toggleMobDrawer()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-    <span class="mob-nav-label">Filters</span>
+    Filters
   </button>
   <button class="mob-nav-btn" id="bnWatchlist" onclick="mobNavWatchlist()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-    <span class="mob-nav-label">Watchlist</span>
+    Watchlist
   </button>
   <button class="mob-nav-btn" id="bnAccount" onclick="openAuthOrProfile()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
-    <span class="mob-nav-label" id="bnAccountLabel">Account</span>
+    <span id="bnAccountLabel">Account</span>
   </button>
 </nav>
 
+<script>
+// ═══════════════════════════════════════════════════════
+// MOBILE UI — all logic isolated here, no overrides
+// ═══════════════════════════════════════════════════════
+
+// ── Drawer ───────────────────────────────────────────
+function toggleMobDrawer(forceClose) {
+  const sidebar  = document.querySelector('.sidebar');
+  const overlay  = document.getElementById('mobDrawerOverlay');
+  const menuBtn  = document.getElementById('mobMenuBtn');
+  const bnFilter = document.getElementById('bnFilter');
+  if (!sidebar) return;
+  const isOpen = sidebar.classList.contains('mob-open');
+  if (forceClose || isOpen) {
+    sidebar.classList.remove('mob-open');
+    overlay.classList.remove('open');
+    menuBtn?.classList.remove('open');
+    bnFilter?.classList.remove('active');
+    document.body.style.overflow = '';
+  } else {
+    sidebar.classList.add('mob-open');
+    overlay.classList.add('open');
+    menuBtn?.classList.add('open');
+    bnFilter?.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    if (!sidebar.querySelector('.mob-drawer-close-btn')) {
+      const btn = document.createElement('button');
+      btn.className = 'mob-drawer-close-btn';
+      btn.textContent = '✕  Close';
+      Object.assign(btn.style, {
+        display:'block', width:'100%', marginTop:'0.8rem', padding:'0.6rem',
+        background:'rgba(255,255,255,0.05)', border:'1px solid var(--border)',
+        borderRadius:'2px', color:'var(--muted)', fontFamily:"'Space Mono',monospace",
+        fontSize:'0.62rem', letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer'
+      });
+      btn.onclick = () => toggleMobDrawer(true);
+      sidebar.appendChild(btn);
+    }
+  }
+}
+
+// Swipe down to dismiss drawer
+let _sy = 0;
+document.addEventListener('touchstart', e => { _sy = e.touches[0].clientY; }, { passive:true });
+document.addEventListener('touchend', e => {
+  if (e.changedTouches[0].clientY - _sy > 85 && document.querySelector('.sidebar.mob-open'))
+    toggleMobDrawer(true);
+}, { passive:true });
+
+// Swipe down to dismiss modal
+(function(){
+  let sy = 0;
+  const modal = document.getElementById('modal');
+  if (!modal) return;
+  modal.addEventListener('touchstart', e => { sy = e.touches[0].clientY; }, { passive:true });
+  modal.addEventListener('touchend', e => {
+    if (e.changedTouches[0].clientY - sy > 90)
+      document.getElementById('overlay').classList.remove('open');
+  }, { passive:true });
+})();
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') toggleMobDrawer(true);
+});
+
+// ── Mobile search ─────────────────────────────────────
+function toggleMobSearch() {
+  const bar = document.getElementById('mobSearchBar');
+  const btn = document.getElementById('bnSearch');
+  if (!bar) return;
+  const opening = !bar.classList.contains('open');
+  bar.classList.toggle('open', opening);
+  btn?.classList.toggle('active', opening);
+  if (opening) {
+    setTimeout(() => document.getElementById('mobSearchInput')?.focus(), 60);
+  } else {
+    const inp = document.getElementById('mobSearchInput');
+    if (inp) inp.value = '';
+    searchTerm = '';
+    render();
+  }
+}
+
+document.getElementById('mobSearchInput')?.addEventListener('input', e => {
+  searchTerm = e.target.value.trim();
+  const desk = document.getElementById('searchInput');
+  if (desk) desk.value = e.target.value;
+  render();
+});
+
+// ── Season pills ──────────────────────────────────────
+function setMobSeason(s) {
+  activeSeason = s;
+  document.querySelectorAll('[data-mob-season]').forEach(el =>
+    el.classList.toggle('active', el.dataset.mobSeason === s));
+  document.querySelectorAll('#seasonFilters .season-pill').forEach(el =>
+    el.classList.toggle('active', el.dataset.season === s));
+  const labels = { all:'ALL SEASONS', winter:'WINTER 2026', spring:'SPRING 2026', summer:'SUMMER 2026', fall:'FALL 2026' };
+  document.getElementById('sectionTitle').textContent = labels[s] || 'ALL SEASONS';
+  render();
+}
+
+// ── Filter badge ──────────────────────────────────────
+function updateMobBadge() {
+  const n = (activeSeason !== 'all' ? 1 : 0) + (activeStatus ? 1 : 0) +
+            (activeStream ? 1 : 0) + activeGenres.size + activeStudios.size + (minScore > 0 ? 1 : 0);
+  const badge   = document.getElementById('mobFilterBadge');
+  const trigger = document.getElementById('mobFilterTrigger');
+  if (badge)   { badge.textContent = n; badge.classList.toggle('show', n > 0); }
+  if (trigger) trigger.classList.toggle('has-filter', n > 0);
+}
+
+// Hook into grid changes via MutationObserver — no render() override needed
+const _gridEl = document.getElementById('grid');
+if (_gridEl) {
+  new MutationObserver(() => {
+    updateMobBadge();
+    document.querySelectorAll('[data-mob-season]').forEach(el =>
+      el.classList.toggle('active', el.dataset.mobSeason === activeSeason));
+    const lbl = document.getElementById('bnAccountLabel');
+    if (lbl) lbl.textContent = currentUser ? currentUser.username.slice(0, 8) : 'Account';
+    document.getElementById('bnAccount')?.classList.toggle('active', !!currentUser);
+  }).observe(_gridEl, { childList: true });
+}
+
+// ── Bottom nav ────────────────────────────────────────
+function mobNavHome() {
+  document.getElementById('clearBtn')?.click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('bnHome')?.classList.add('active');
+}
+function mobNavWatchlist() {
+  toggleWatchlistView();
+  document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('bnWatchlist')?.classList.toggle('active', showingWatchlist);
+  if (!showingWatchlist) document.getElementById('bnHome')?.classList.add('active');
+}
+</script>
 </body>
 </html>
