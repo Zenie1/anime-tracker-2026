@@ -157,12 +157,7 @@ header {
 }
 .sidebar::-webkit-scrollbar { width: 3px; }
 .sidebar::-webkit-scrollbar-thumb { background: var(--border); }
-.filter-section { margin-bottom: 1.6rem; }
-.filter-label {
-  font-family: 'Space Mono', monospace; font-size: 0.58rem; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--gold); margin-bottom: 0.65rem;
-  padding-bottom: 0.38rem; border-bottom: 1px solid var(--border); display: block;
-}
+/* filter-section/label styles moved to collapsed sidebar block below */
 .search-box {
   display: flex; align-items: center; gap: 0.5rem;
   background: rgba(255,255,255,0.05); border: 1px solid var(--border);
@@ -464,6 +459,201 @@ footer a { color: var(--muted); text-decoration: none; transition: color 0.14s; 
 footer a:hover { color: var(--paper); }
 .footer-links { display: flex; gap: 1.2rem; }
 
+
+/* ══ COLLAPSIBLE SIDEBAR SECTIONS ════════════════════════════════ */
+.filter-section { margin-bottom: 0; border-bottom: 1px solid rgba(245,200,66,0.07); }
+.filter-label {
+  font-family: 'Space Mono', monospace; font-size: 0.57rem; letter-spacing: 0.13em;
+  text-transform: uppercase; color: var(--gold);
+  padding: 0.65rem 0; border-bottom: none; display: flex;
+  justify-content: space-between; align-items: center; cursor: pointer;
+  user-select: none; margin-bottom: 0;
+}
+.filter-label::after { content: '▾'; font-size: 0.65rem; opacity: 0.5; transition: transform 0.2s; }
+.filter-label.collapsed::after { transform: rotate(-90deg); }
+.filter-body { overflow: hidden; transition: max-height 0.25s ease; padding-bottom: 0.8rem; }
+.filter-body.collapsed { max-height: 0 !important; padding-bottom: 0; }
+
+/* Season filter as compact pill row */
+.season-pill-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.season-pill {
+  font-family: 'Space Mono', monospace; font-size: 0.52rem; letter-spacing: 0.05em;
+  text-transform: uppercase; padding: 0.22rem 0.5rem; border-radius: 2px;
+  border: 1px solid rgba(255,255,255,0.09); color: var(--muted);
+  background: rgba(255,255,255,0.03); cursor: pointer; transition: all 0.14s;
+  display: flex; align-items: center; gap: 0.3rem;
+}
+.season-pill:hover { color: var(--paper); border-color: rgba(255,255,255,0.2); }
+.season-pill.active { color: var(--gold); border-color: rgba(245,200,66,0.4); background: rgba(245,200,66,0.08); }
+.season-pill .pill-count { font-size: 0.46rem; opacity: 0.6; }
+
+/* Status as 3-button row */
+.status-btn-row { display: flex; gap: 0.28rem; }
+.status-btn {
+  flex: 1; font-family: 'Space Mono', monospace; font-size: 0.5rem; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 0.28rem 0.2rem; border-radius: 2px; text-align: center;
+  border: 1px solid rgba(255,255,255,0.09); color: var(--muted); background: rgba(255,255,255,0.03);
+  cursor: pointer; transition: all 0.14s;
+}
+.status-btn:hover { color: var(--paper); border-color: rgba(255,255,255,0.2); }
+.status-btn[data-status="airing"].active  { color:#22c55e; border-color:rgba(34,197,94,0.4); background:rgba(34,197,94,0.08); }
+.status-btn[data-status="upcoming"].active{ color:var(--gold); border-color:rgba(245,200,66,0.4); background:rgba(245,200,66,0.08); }
+.status-btn[data-status="finished"].active{ color:var(--muted); border-color:rgba(107,114,128,0.4); background:rgba(107,114,128,0.08); }
+
+/* Stream as compact icon chips */
+.stream-btn-row { display: flex; flex-direction: column; gap: 0.22rem; }
+.stream-btn {
+  font-family: 'Space Mono', monospace; font-size: 0.55rem; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 0.28rem 0.55rem; border-radius: 2px;
+  border: 1px solid rgba(255,255,255,0.08); color: var(--muted); background: rgba(255,255,255,0.02);
+  cursor: pointer; transition: all 0.14s; text-align: left;
+}
+.stream-btn:hover { color: var(--paper); border-color: rgba(255,255,255,0.18); }
+.stream-btn.active { color: var(--gold); border-color: rgba(245,200,66,0.35); background: rgba(245,200,66,0.06); }
+
+/* Score slider compact */
+.score-row { display: flex; align-items: center; gap: 0.5rem; }
+.score-row .score-val { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--gold); font-weight: 700; min-width: 2.2em; }
+#scoreSlider { flex: 1; }
+
+/* Genre chips — limited height with show-more */
+.genre-chip-group { display: flex; flex-wrap: wrap; gap: 0.25rem; max-height: 72px; overflow: hidden; transition: max-height 0.3s; }
+.genre-chip-group.expanded { max-height: 500px; }
+.genre-more-btn {
+  font-family: 'Space Mono', monospace; font-size: 0.5rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted); cursor: pointer; background: none;
+  border: none; padding: 0.2rem 0; text-decoration: underline; transition: color 0.14s;
+  margin-top: 0.25rem;
+}
+.genre-more-btn:hover { color: var(--gold); }
+
+/* Studio list — limit to 6 visible */
+#studioFilters { max-height: 120px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+#studioFilters::-webkit-scrollbar { width: 2px; }
+#studioFilters::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* ══ SPOTLIGHT ════════════════════════════════════════════════════ */
+#spotlight {
+  position: relative; width: 100%;
+  height: clamp(280px, 40vw, 480px);
+  overflow: hidden; background: #08080d;
+}
+.spotlight-slide {
+  position: absolute; inset: 0; opacity: 0;
+  transition: opacity 0.85s ease; display: flex; align-items: flex-end;
+}
+.spotlight-slide.active { opacity: 1; z-index: 1; }
+.spotlight-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center 20%;
+  transform: scale(1.07); transition: transform 8s ease;
+  filter: blur(3px) brightness(0.5);
+}
+.spotlight-slide.active .spotlight-bg { transform: scale(1); }
+.spotlight-slide::after {
+  content: ''; position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(105deg, rgba(8,8,13,0.97) 0%, rgba(8,8,13,0.65) 45%, rgba(8,8,13,0.05) 100%),
+              linear-gradient(to top, rgba(8,8,13,0.95) 0%, transparent 55%);
+}
+.spotlight-poster {
+  position: absolute; right: 6%; bottom: 0;
+  height: 90%; max-width: 180px; width: auto;
+  object-fit: cover; object-position: top;
+  border-radius: 4px 4px 0 0; z-index: 2;
+  box-shadow: -16px 0 50px rgba(0,0,0,0.8); transition: opacity 0.5s;
+}
+.spotlight-content {
+  position: relative; z-index: 3;
+  padding: 1.8rem 1.8rem 2.5rem; max-width: 520px;
+}
+.spotlight-eyebrow {
+  font-family: 'Space Mono', monospace; font-size: 0.55rem;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold);
+  margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.spotlight-eyebrow::before { content:''; display:inline-block; width:18px; height:2px; background:var(--gold); }
+.spotlight-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(1.8rem, 4vw, 3.2rem); line-height: 0.95;
+  letter-spacing: 0.03em; color: var(--paper); margin-bottom: 0.35rem;
+}
+.spotlight-studio {
+  font-family: 'Space Mono', monospace; font-size: 0.57rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); margin-bottom: 0.6rem;
+}
+.spotlight-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.75rem; }
+.spotlight-chip {
+  font-family: 'Space Mono', monospace; font-size: 0.5rem; letter-spacing: 0.05em;
+  text-transform: uppercase; padding: 0.18rem 0.45rem; border-radius: 2px;
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(240,236,227,0.75);
+}
+.spotlight-synopsis {
+  font-size: 0.74rem; line-height: 1.6; color: rgba(240,236,227,0.55);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; margin-bottom: 0.9rem;
+}
+.spotlight-actions { display: flex; gap: 0.6rem; align-items: center; }
+.spot-btn {
+  font-family: 'Space Mono', monospace; font-size: 0.57rem; letter-spacing: 0.08em;
+  text-transform: uppercase; font-weight: 700; padding: 0.48rem 1rem;
+  border-radius: 2px; cursor: pointer; transition: all 0.16s; border: none;
+}
+.spot-btn.primary { background: var(--gold); color: var(--ink); }
+.spot-btn.primary:hover { opacity: 0.86; }
+.spot-btn.secondary { background: rgba(255,255,255,0.09); color: var(--paper); border: 1px solid rgba(255,255,255,0.18); }
+.spot-btn.secondary:hover { background: rgba(255,255,255,0.16); }
+.spot-score {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: conic-gradient(var(--gold) calc(var(--pct)*1%), rgba(255,255,255,0.07) 0%);
+  display: flex; align-items: center; justify-content: center; position: relative;
+}
+.spot-score::before { content:''; position:absolute; inset:5px; background:rgba(8,8,13,0.92); border-radius:50%; }
+.spot-score-n { font-family:'Bebas Neue',sans-serif; font-size:0.9rem; color:var(--gold); position:relative; z-index:1; }
+.spot-nav { position: absolute; bottom: 0.9rem; left: 1.8rem; display: flex; align-items: center; gap: 0.55rem; z-index: 10; }
+.spot-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: all 0.22s; }
+.spot-dot.active { background: var(--gold); width: 18px; border-radius: 3px; }
+.spot-arrows { position: absolute; bottom: 0.7rem; right: 1.1rem; display: flex; gap: 0.3rem; z-index: 10; }
+.spot-arrow {
+  width: 28px; height: 28px; border-radius: 2px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
+  color: var(--paper); cursor: pointer; font-size: 0.8rem; transition: all 0.14s;
+}
+.spot-arrow:hover { background: rgba(245,200,66,0.18); border-color: var(--gold); color: var(--gold); }
+.spot-counter { position: absolute; top: 0.75rem; right: 0.85rem; z-index: 10; font-family: 'Space Mono', monospace; font-size: 0.55rem; color: rgba(255,255,255,0.3); letter-spacing: 0.1em; }
+.spot-progress { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.07); z-index: 10; }
+.spot-progress-fill { height: 100%; background: var(--gold); transition: width 0.1s linear; }
+
+/* ══ WEEKLY SCHEDULE ═════════════════════════════════════════════ */
+.sched-strip {
+  background: var(--panel); border-bottom: 1px solid var(--border);
+  padding: 0.6rem 1.5rem; overflow-x: auto; scrollbar-width: none;
+}
+.sched-strip::-webkit-scrollbar { display: none; }
+.sched-inner { display: flex; gap: 0; align-items: stretch; min-width: max-content; }
+.sched-header {
+  font-family: 'Space Mono', monospace; font-size: 0.5rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--muted); white-space: nowrap;
+  padding-right: 1.1rem; border-right: 1px solid var(--border);
+  display: flex; align-items: center; flex-shrink: 0;
+}
+.sched-day { display: flex; flex-direction: column; border-right: 1px solid var(--border); padding: 0 0.85rem; min-width: 96px; }
+.sched-day:last-child { border-right: none; }
+.sched-day-lbl {
+  font-family: 'Space Mono', monospace; font-size: 0.5rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.28rem;
+}
+.sched-day.is-today .sched-day-lbl { color: var(--gold); }
+.sched-day.is-today .sched-day-lbl::after { content:' ·TODAY'; font-size:0.42rem; opacity:0.7; }
+.sched-show {
+  font-family: 'Space Mono', monospace; font-size: 0.53rem; color: rgba(240,236,227,0.55);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 88px;
+  cursor: pointer; transition: color 0.13s; padding: 0.05rem 0;
+}
+.sched-show:hover { color: var(--gold); }
+.sched-show.is-today { color: var(--gold); font-weight: 700; }
+.sched-empty { font-family: 'Space Mono', monospace; font-size: 0.53rem; color: rgba(255,255,255,0.12); padding: 0.05rem 0; }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
@@ -519,82 +709,107 @@ footer a:hover { color: var(--paper); }
   </div>
 </header>
 
-<div class="hero">
-  <div>
-    <h1 class="hero-title">THE<br><em>SEASON</em><br>TRACKER</h1>
-    <p class="hero-sub">// ALL CONFIRMED 2026 RELEASES</p>
+<!-- ══ SPOTLIGHT SLIDESHOW ══ -->
+<div id="spotlight" style="display:none">
+  <div id="spotSlides"></div>
+  <div class="spot-counter" id="spotCounter"></div>
+  <div class="spot-nav" id="spotDots"></div>
+  <div class="spot-arrows">
+    <div class="spot-arrow" id="spotPrev">&#8592;</div>
+    <div class="spot-arrow" id="spotNext">&#8594;</div>
   </div>
-  <div class="hero-stats">
-    <div class="stat">
-      <div class="stat-n" id="heroTotal">—</div>
-      <div class="stat-l">Shows Tracked</div>
-    </div>
-    <div class="stat">
-      <div class="stat-n">4</div>
-      <div class="stat-l">Seasons</div>
-    </div>
+  <div class="spot-progress"><div class="spot-progress-fill" id="spotBar"></div></div>
+</div>
+
+<!-- ══ WEEKLY SCHEDULE ══ -->
+<div class="sched-strip" id="schedStrip" style="display:none">
+  <div class="sched-inner" id="schedInner">
+    <div class="sched-header">THIS WEEK</div>
   </div>
 </div>
 
 <div class="shell">
   <aside class="sidebar">
+    <!-- Search -->
     <div class="search-box">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
-      <input type="text" id="searchInput" placeholder="Search anime, studio, genre…">
+      <input type="text" id="searchInput" placeholder="Search…">
     </div>
+
+    <!-- Season -->
     <div class="filter-section">
-      <span class="filter-label">Season</span>
-      <div class="chip-group" id="seasonFilters">
-        <div class="chip active" data-season="all">All Seasons <span class="chip-count" id="cnt-all">—</span></div>
-        <div class="chip" data-season="winter">❄ Winter 2026 <span class="chip-count" id="cnt-winter">—</span></div>
-        <div class="chip" data-season="spring">🌸 Spring 2026 <span class="chip-count" id="cnt-spring">—</span></div>
-        <div class="chip" data-season="summer">☀ Summer 2026 <span class="chip-count" id="cnt-summer">—</span></div>
-        <div class="chip" data-season="fall">🍂 Fall 2026 <span class="chip-count" id="cnt-fall">—</span></div>
-      </div>
-    </div>
-    <div class="filter-section">
-      <span class="filter-label">Status</span>
-      <div class="chip-group" id="statusFilters">
-        <div class="chip" data-status="airing">● Airing Now</div>
-        <div class="chip" data-status="finished">✓ Finished</div>
-        <div class="chip" data-status="upcoming">◎ Upcoming</div>
-      </div>
-    </div>
-    <div class="filter-section">
-      <span class="filter-label">Streaming</span>
-      <div class="chip-group" id="streamFilters">
-        <div class="chip" data-stream="Crunchyroll">Crunchyroll</div>
-        <div class="chip" data-stream="Netflix">Netflix</div>
-        <div class="chip" data-stream="HIDIVE">HIDIVE</div>
-        <div class="chip" data-stream="Disney">Disney+ / Hulu</div>
-      </div>
-    </div>
-    <div class="filter-section">
-      <span class="filter-label">Min. MAL Score</span>
-      <div class="score-slider-wrap">
-        <div class="score-slider-labels">
-          <span>0.0</span>
-          <span>Min: <span class="score-val" id="scoreVal">0.0</span></span>
-          <span>10.0</span>
+      <span class="filter-label" onclick="toggleSection(this)">Season</span>
+      <div class="filter-body">
+        <div class="season-pill-row" id="seasonFilters">
+          <div class="season-pill active" data-season="all">All <span class="pill-count" id="cnt-all">—</span></div>
+          <div class="season-pill" data-season="winter">❄ <span class="pill-count" id="cnt-winter">—</span></div>
+          <div class="season-pill" data-season="spring">🌸 <span class="pill-count" id="cnt-spring">—</span></div>
+          <div class="season-pill" data-season="summer">☀ <span class="pill-count" id="cnt-summer">—</span></div>
+          <div class="season-pill" data-season="fall">🍂 <span class="pill-count" id="cnt-fall">—</span></div>
         </div>
-        <input type="range" id="scoreSlider" min="0" max="10" step="0.5" value="0">
       </div>
     </div>
+
+    <!-- Status -->
     <div class="filter-section">
-      <span class="filter-label">Genre</span>
-      <div class="genre-chip-group" id="genreFilters"></div>
-    </div>
-    <div class="filter-section">
-      <span class="filter-label">Studio</span>
-      <div class="studio-search-wrap">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="studioSearch" placeholder="Filter studios…">
+      <span class="filter-label" onclick="toggleSection(this)">Status</span>
+      <div class="filter-body">
+        <div class="status-btn-row" id="statusFilters">
+          <div class="status-btn" data-status="airing">● Airing</div>
+          <div class="status-btn" data-status="upcoming">◎ Soon</div>
+          <div class="status-btn" data-status="finished">✓ Done</div>
+        </div>
       </div>
-      <div class="chip-group" id="studioFilters"></div>
     </div>
-    <button class="clear-btn" id="clearBtn">✕ Clear all filters</button>
+
+    <!-- Streaming -->
+    <div class="filter-section">
+      <span class="filter-label" onclick="toggleSection(this)">Platform</span>
+      <div class="filter-body">
+        <div class="stream-btn-row" id="streamFilters">
+          <div class="stream-btn" data-stream="Crunchyroll">Crunchyroll</div>
+          <div class="stream-btn" data-stream="Netflix">Netflix</div>
+          <div class="stream-btn" data-stream="HIDIVE">HIDIVE</div>
+          <div class="stream-btn" data-stream="Disney">Disney+</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Score -->
+    <div class="filter-section">
+      <span class="filter-label" onclick="toggleSection(this)">Min Score</span>
+      <div class="filter-body">
+        <div class="score-row">
+          <input type="range" id="scoreSlider" min="0" max="10" step="0.5" value="0">
+          <span class="score-val" id="scoreVal">0.0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Genre -->
+    <div class="filter-section">
+      <span class="filter-label" onclick="toggleSection(this)">Genre</span>
+      <div class="filter-body">
+        <div class="genre-chip-group" id="genreFilters"></div>
+        <button class="genre-more-btn" id="genreMoreBtn" onclick="toggleGenres()" style="display:none">Show more ▾</button>
+      </div>
+    </div>
+
+    <!-- Studio -->
+    <div class="filter-section">
+      <span class="filter-label" onclick="toggleSection(this)">Studio</span>
+      <div class="filter-body">
+        <div class="search-box" style="margin-bottom:0.5rem;padding:0.38rem 0.55rem">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="studioSearch" placeholder="Filter studios…" style="font-size:0.62rem">
+        </div>
+        <div class="chip-group" id="studioFilters"></div>
+      </div>
+    </div>
+
+    <button class="clear-btn" id="clearBtn" style="margin-top:0.8rem">✕ Clear filters</button>
   </aside>
 
   <div class="main">
@@ -883,8 +1098,15 @@ function getPlaceholderColor(malId) {
 }
 
 // ── STATE ────────────────────────────────────────────────────────
-let DB            = [];
-let imgCache      = {};
+let DB = [];
+
+// imgCache uses a Proxy to coerce all keys to strings, preventing the
+// number/string mismatch that causes cover-art cross-contamination.
+const imgCache = new Proxy({}, {
+  get(t, k) { return t[String(k)]; },
+  set(t, k, v) { t[String(k)] = v; return true; },
+  has(t, k) { return String(k) in t; },
+});
 let activeSeason  = 'all';
 let activeStatus  = null;
 let activeStream  = null;
@@ -941,7 +1163,7 @@ function normalise(raw) {
   const season    = (raw.season || 'tba').toLowerCase();
   const streaming = detectStream(raw);
   const imageUrl  = raw.images?.jpg?.large_image_url || raw.images?.jpg?.image_url || null;
-  if (imageUrl && raw.mal_id) imgCache[raw.mal_id] = imageUrl;
+  if (imageUrl && raw.mal_id) imgCache[String(raw.mal_id)] = imageUrl;
   const status   = normaliseStatus(raw.status);
   const premiere = raw.aired?.from ? raw.aired.from.split('T')[0] : null;
   // Extract YouTube trailer ID
@@ -998,9 +1220,11 @@ async function loadData(forceRefresh = false) {
     const cached = loadCache();
     if (cached?.length) {
       DB = cached;
-      cached.forEach(a => { if (a.imageUrl) imgCache[a.malId] = a.imageUrl; });
+      cached.forEach(a => { if (a.imageUrl) imgCache[String(a.malId)] = a.imageUrl; });
       setLiveStatus('live');
       buildUI(); render();
+      setTimeout(buildSpotlight, 100);
+      setTimeout(buildSchedule, 50);
       showToast('Loaded from cache — refreshing in background…');
       fetchAndUpdate().catch(() => {});
       return;
@@ -1018,6 +1242,9 @@ async function fetchAndUpdate() {
   saveCache(DB);
   setLiveStatus('live');
   buildUI(); render();
+  requestAnimationFrame(flushPendingImages);
+  setTimeout(buildSpotlight, 100);
+  setTimeout(buildSchedule, 50);
   showToast('Data refreshed from Jikan / MAL ✓');
 }
 setInterval(() => {
@@ -1091,12 +1318,14 @@ function getFiltered() {
 function buildUI() {
   const el=id=>document.getElementById(id);
   el('cnt-all').textContent=DB.length;
-  el('heroTotal').textContent=DB.length;
+  const htEl=el('heroTotal'); if(htEl) htEl.textContent=DB.length;
   SEASONS.forEach(s=>{const e=el(`cnt-${s}`);if(e)e.textContent=DB.filter(a=>a.season===s).length;});
 
   const genres=[...new Set(DB.flatMap(a=>a.genres))].sort();
   const gf=document.getElementById('genreFilters');
   gf.innerHTML=genres.map(g=>`<div class="g-chip" data-genre="${g}">${g}</div>`).join('');
+  const genreMoreBtn = document.getElementById('genreMoreBtn');
+  if (genreMoreBtn) genreMoreBtn.style.display = genres.length > 12 ? '' : 'none';
   gf.querySelectorAll('.g-chip').forEach(c=>c.addEventListener('click',()=>{
     const g=c.dataset.genre;
     if(activeGenres.has(g)){activeGenres.delete(g);c.classList.remove('active');}
@@ -1132,8 +1361,8 @@ function cardHTML(a,i) {
   const imgSrc=imgCache[a.malId]||'';
   const placeholderColor = getPlaceholderColor(a.malId);
   const imgAttr=imgSrc
-    ?`src="${imgSrc}" class="loaded"`
-    :`src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"`;
+    ?`src="${imgSrc}" class="loaded" onerror="imgOnError(this)"`
+    :`src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-pending="1"`;
   const faved = isFav(a.malId);
   const watchedCount = getWatchedCount(a.malId);
   const total = a.episodes || 12;
@@ -1153,7 +1382,7 @@ function cardHTML(a,i) {
   return `
   <div class="anime-card${faved?' is-favorited':''}" data-id="${a.malId}" style="animation-delay:${i*0.035}s">
     <div class="poster-wrap" style="background:${placeholderColor}">
-      <img ${imgAttr} alt="${escHtml(a.title)}" loading="lazy" onload="this.classList.add('loaded')">
+      <img ${imgAttr} alt="${escHtml(a.title)}" loading="lazy" data-malid="${a.malId}" onload="this.classList.add('loaded');this.removeAttribute('data-pending')">
       <div class="badge-row"><span class="season-badge ${sbc}">${sbl}</span>${score}</div>
       <div class="status-ribbon ${stc}">${stl}</div>
     </div>
@@ -1204,7 +1433,7 @@ function render() {
 // ── MODAL ────────────────────────────────────────────────────────
 function openModal(a) {
   const today=new Date();
-  const imgSrc=imgCache[a.malId]||'';
+  const imgSrc=imgCache[String(a.malId)]||'';
   const score=a.score?`<span class="meta-chip">★ MAL ${a.score}</span>`:'';
   const statusLabel={airing:'Currently Airing',finished:'Finished Airing',upcoming:'Upcoming'}[a.status]||'';
   const cast=(a.cast||[]).map(c=>`<div class="cast-card"><div class="cast-char">${escHtml(c.char)}</div><div class="cast-actor">${escHtml(c.actor)}</div></div>`).join('')
@@ -1224,7 +1453,7 @@ function openModal(a) {
       <div class="modal-section">Official Trailer</div>
       <div class="trailer-wrap">
         <div class="trailer-thumb" id="trailerThumb_${a.malId}" onclick="loadTrailer('${a.trailerId}', ${a.malId})">
-          <img src="https://img.youtube.com/vi/${a.trailerId}/hqdefault.jpg" alt="Trailer thumbnail" loading="lazy">
+          <img src="https://img.youtube.com/vi/${a.trailerId}/maxresdefault.jpg" onerror="this.onerror=null;this.src='https://img.youtube.com/vi/${a.trailerId}/mqdefault.jpg'" alt="Trailer thumbnail" loading="lazy">
           <div class="play-btn">
             <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
           </div>
@@ -1256,7 +1485,7 @@ function openModal(a) {
   const faved = isFav(a.malId);
 
   document.getElementById('modalGrid').innerHTML=`
-    <img class="modal-poster" src="${imgSrc}" alt="${escHtml(a.title)}" onerror="this.style.background='#1a1a22'" style="${imgSrc?'':'background:#1a1a22'}">
+    <img class="modal-poster" src="${imgSrc}" alt="${escHtml(a.title)}" data-malid="${a.malId}" onerror="this.style.background='#1a1a22'" style="${imgSrc?'':'background:#1a1a22'}">
     <div class="modal-body">
       <div class="modal-studio">${escHtml(a.studio)} · ${a.season.charAt(0).toUpperCase()+a.season.slice(1)} 2026</div>
       <h2 class="modal-title">${escHtml(a.title)}</h2>
@@ -1290,23 +1519,23 @@ function loadTrailer(youtubeId, malId) {
   const thumbEl = document.getElementById(`trailerThumb_${malId}`);
   if (!thumbEl) return;
   const wrap = thumbEl.parentElement;
-  wrap.innerHTML = `<iframe src="https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0" allowfullscreen allow="autoplay; encrypted-media" title="Anime trailer"></iframe>`;
+  wrap.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" title="Anime trailer"></iframe>`;
 }
 
 // ── EVENTS ───────────────────────────────────────────────────────
-document.querySelectorAll('#seasonFilters .chip').forEach(c=>c.addEventListener('click',()=>{
-  document.querySelectorAll('#seasonFilters .chip').forEach(x=>x.classList.remove('active'));
+document.querySelectorAll('#seasonFilters .season-pill').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('#seasonFilters .season-pill').forEach(x=>x.classList.remove('active'));
   c.classList.add('active');activeSeason=c.dataset.season;render();
 }));
-document.querySelectorAll('#statusFilters .chip').forEach(c=>c.addEventListener('click',()=>{
+document.querySelectorAll('#statusFilters .status-btn').forEach(c=>c.addEventListener('click',()=>{
   const was=c.classList.contains('active');
-  document.querySelectorAll('#statusFilters .chip').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('#statusFilters .status-btn').forEach(x=>x.classList.remove('active'));
   activeStatus=was?null:c.dataset.status;
   if(!was)c.classList.add('active');render();
 }));
-document.querySelectorAll('#streamFilters .chip').forEach(c=>c.addEventListener('click',()=>{
+document.querySelectorAll('#streamFilters .stream-btn').forEach(c=>c.addEventListener('click',()=>{
   const was=c.classList.contains('active');
-  document.querySelectorAll('#streamFilters .chip').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('#streamFilters .stream-btn').forEach(x=>x.classList.remove('active'));
   activeStream=was?null:c.dataset.stream;
   if(!was)c.classList.add('active');render();
 }));
@@ -1341,7 +1570,7 @@ document.getElementById('clearBtn').addEventListener('click',()=>{
   document.getElementById('scoreVal').textContent='0.0';
   document.getElementById('studioSearch').value='';
   document.getElementById('watchlistToggle').classList.remove('active');
-  document.querySelectorAll('.chip,.g-chip').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.season-pill,.status-btn,.stream-btn,.g-chip').forEach(c=>c.classList.remove('active'));
   document.querySelector('[data-season="all"]').classList.add('active');
   buildStudioList('');
   render();
@@ -1355,9 +1584,227 @@ document.addEventListener('keydown',e=>{
   }
 });
 
+// ── IMAGE ERROR RECOVERY ─────────────────────────────────────────
+const imgFetchInFlight = new Set();
+
+function imgOnError(el) {
+  el.onerror = null;
+  const malId = String(el.dataset.malid || el.closest('[data-id]')?.dataset.id || '');
+  if (!malId || imgFetchInFlight.has(malId)) return;
+  imgFetchInFlight.add(malId);
+  delete imgCache[malId];
+  fetch(`https://api.jikan.moe/v4/anime/${malId}`, { signal: AbortSignal.timeout(6000) })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(d => {
+      const url = d?.data?.images?.jpg?.large_image_url || d?.data?.images?.jpg?.image_url || null;
+      imgFetchInFlight.delete(malId);
+      if (!url) { el.classList.add('loaded'); return; }
+      imgCache[malId] = url;
+      el.src = url;
+      el.onload = () => el.classList.add('loaded');
+      const mp = document.querySelector(`.modal-poster[data-malid="${malId}"]`);
+      if (mp) mp.src = url;
+    })
+    .catch(() => { imgFetchInFlight.delete(malId); el.classList.add('loaded'); });
+}
+
+function flushPendingImages() {
+  document.querySelectorAll('img[data-pending="1"]').forEach(el => {
+    const malId = String(el.dataset.malid || '');
+    if (!malId) return;
+    const url = imgCache[malId];
+    if (url) {
+      el.removeAttribute('data-pending');
+      el.src = url;
+      el.onerror = () => imgOnError(el);
+      el.onload  = () => el.classList.add('loaded');
+    }
+  });
+}
+
 // ── UTILS ────────────────────────────────────────────────────────
 function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// ── SIDEBAR COLLAPSE ─────────────────────────────────────────────
+function toggleSection(labelEl) {
+  labelEl.classList.toggle('collapsed');
+  const body = labelEl.nextElementSibling;
+  if (body && body.classList.contains('filter-body')) {
+    if (body.classList.contains('collapsed')) {
+      body.style.maxHeight = body.scrollHeight + 'px';
+      body.classList.remove('collapsed');
+    } else {
+      body.style.maxHeight = body.scrollHeight + 'px';
+      requestAnimationFrame(() => { body.style.maxHeight = '0'; body.classList.add('collapsed'); });
+    }
+  }
+}
+// Set initial max-height on all filter-bodies so collapse animation works
+document.querySelectorAll('.filter-body').forEach(b => { b.style.maxHeight = b.scrollHeight + 'px'; });
+
+// Genre show-more toggle
+let genresExpanded = false;
+function toggleGenres() {
+  genresExpanded = !genresExpanded;
+  const gf = document.getElementById('genreFilters');
+  const btn = document.getElementById('genreMoreBtn');
+  gf.classList.toggle('expanded', genresExpanded);
+  btn.textContent = genresExpanded ? 'Show less ▴' : 'Show more ▾';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SPOTLIGHT SLIDESHOW
+// ══════════════════════════════════════════════════════════════════
+const SPOT_MS = 6500;
+let spotIdx = 0, spotTick = null, spotProg = 0, spotProgTick = null;
+
+function getSpotPicks() {
+  const withImg = DB.filter(a => imgCache[String(a.malId)]);
+  const pool = withImg.length >= 3 ? withImg : DB;
+  const ranked = [...pool].sort((a, b) => {
+    const sw = { airing: 3, upcoming: 2, finished: 1 };
+    return ((sw[b.status] || 0) * 2 + (b.score || 0)) - ((sw[a.status] || 0) * 2 + (a.score || 0));
+  });
+  const seen = new Set(), picks = [];
+  for (const a of ranked) {
+    if (picks.length >= 5) break;
+    if (!seen.has(a.studio)) { picks.push(a); seen.add(a.studio); }
+  }
+  while (picks.length < 5 && picks.length < ranked.length) {
+    const a = ranked[picks.length];
+    if (!picks.includes(a)) picks.push(a);
+  }
+  return picks.slice(0, 5);
+}
+
+function buildSpotlight() {
+  const picks = getSpotPicks();
+  const spotEl = document.getElementById('spotlight');
+  if (!picks.length || !spotEl) return;
+  spotEl.style.display = '';
+
+  document.getElementById('spotSlides').innerHTML = picks.map((a, i) => {
+    const img = imgCache[String(a.malId)] || '';
+    const pct = a.score ? Math.round((a.score / 10) * 100) : null;
+    const scoreHTML = pct
+      ? `<div class="spot-score" style="--pct:${pct}"><span class="spot-score-n">${a.score}</span></div>` : '';
+    const genres = a.genres.slice(0, 3).map(g => `<span class="spotlight-chip">${escHtml(g)}</span>`).join('');
+    const eyebrow = ({ airing: 'Now Airing', upcoming: 'Coming Soon', finished: 'Completed' }[a.status] || '')
+      + ' · ' + ((a.season?.charAt(0).toUpperCase() + a.season?.slice(1)) || '') + ' 2026';
+    return `
+    <div class="spotlight-slide${i === 0 ? ' active' : ''}" data-malid="${a.malId}">
+      <div class="spotlight-bg" style="background-image:url('${img}')"></div>
+      ${img ? `<img class="spotlight-poster" src="${img}" alt="${escHtml(a.title)}" loading="lazy">` : ''}
+      <div class="spotlight-content">
+        <div class="spotlight-eyebrow">${escHtml(eyebrow)}</div>
+        <div class="spotlight-title">${escHtml(a.title)}</div>
+        <div class="spotlight-studio">${escHtml(a.studio)}</div>
+        <div class="spotlight-meta">${genres}${a.episodes ? `<span class="spotlight-chip">${a.episodes} eps</span>` : ''}${a.airingDay && a.airingDay !== 'TBA' ? `<span class="spotlight-chip">${a.airingDay}s</span>` : ''}</div>
+        <p class="spotlight-synopsis">${escHtml(a.synopsis)}</p>
+        <div class="spotlight-actions">
+          ${scoreHTML}
+          <button class="spot-btn primary" onclick="openModal(DB.find(x=>x.malId===${a.malId}))">View Details</button>
+          <button class="spot-btn secondary" id="spotFav${a.malId}" onclick="event.stopPropagation();toggleFav(${a.malId})">${isFav(a.malId) ? '♥ Saved' : '♡ Watchlist'}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('spotDots').innerHTML = picks.map((_, i) =>
+    `<div class="spot-dot${i === 0 ? ' active' : ''}" data-i="${i}"></div>`).join('');
+  document.querySelectorAll('.spot-dot').forEach(d =>
+    d.addEventListener('click', () => goSpot(parseInt(d.dataset.i))));
+  document.getElementById('spotPrev').onclick = () => goSpot((spotIdx - 1 + picks.length) % picks.length);
+  document.getElementById('spotNext').onclick = () => goSpot((spotIdx + 1) % picks.length);
+  spotIdx = 0;
+  updateSpotUI(0, picks.length);
+  startSpotAuto(picks.length);
+}
+
+function goSpot(i) {
+  const slides = document.querySelectorAll('.spotlight-slide');
+  const dots   = document.querySelectorAll('.spot-dot');
+  if (!slides.length) return;
+  slides[spotIdx]?.classList.remove('active');
+  dots[spotIdx]?.classList.remove('active');
+  spotIdx = i;
+  slides[spotIdx]?.classList.add('active');
+  dots[spotIdx]?.classList.add('active');
+  updateSpotUI(spotIdx, slides.length);
+  resetSpotProg();
+}
+function updateSpotUI(i, total) {
+  const el = document.getElementById('spotCounter');
+  if (el) el.textContent = `${String(i + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
+}
+function startSpotAuto(total) {
+  clearInterval(spotTick); clearInterval(spotProgTick);
+  spotProg = 0;
+  spotTick = setInterval(() => goSpot((spotIdx + 1) % total), SPOT_MS);
+  spotProgTick = setInterval(() => {
+    spotProg += 100 / (SPOT_MS / 100);
+    const el = document.getElementById('spotBar');
+    if (el) el.style.width = Math.min(spotProg, 100) + '%';
+  }, 100);
+}
+function resetSpotProg() {
+  spotProg = 0;
+  const el = document.getElementById('spotBar');
+  if (el) el.style.width = '0%';
+}
+const spotEl = document.getElementById('spotlight');
+if (spotEl) {
+  spotEl.addEventListener('mouseenter', () => { clearInterval(spotTick); clearInterval(spotProgTick); });
+  spotEl.addEventListener('mouseleave', () => {
+    const total = document.querySelectorAll('.spotlight-slide').length;
+    if (total) startSpotAuto(total);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// WEEKLY SCHEDULE STRIP
+// ══════════════════════════════════════════════════════════════════
+function buildSchedule() {
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const todayIdx = new Date().getDay();
+  const strip = document.getElementById('schedStrip');
+  const inner = document.getElementById('schedInner');
+  if (!inner || !strip) return;
+  strip.style.display = '';
+  const hdr = inner.querySelector('.sched-header');
+  inner.innerHTML = '';
+  if (hdr) inner.appendChild(hdr);
+  const map = {};
+  DAYS.forEach(d => map[d] = []);
+  DB.filter(a => a.status === 'airing' || a.status === 'upcoming').forEach(a => {
+    if (a.airingDay && a.airingDay !== 'TBA' && map[a.airingDay]) map[a.airingDay].push(a);
+  });
+  DAYS.forEach((day, di) => {
+    const col = document.createElement('div');
+    col.className = 'sched-day' + (di === todayIdx ? ' is-today' : '');
+    const lbl = document.createElement('div');
+    lbl.className = 'sched-day-lbl';
+    lbl.textContent = day.slice(0, 3).toUpperCase();
+    col.appendChild(lbl);
+    const shows = map[day] || [];
+    if (!shows.length) {
+      const e = document.createElement('div'); e.className = 'sched-empty'; e.textContent = '—'; col.appendChild(e);
+    } else {
+      shows.slice(0, 3).forEach(a => {
+        const s = document.createElement('div');
+        s.className = 'sched-show' + (di === todayIdx ? ' is-today' : '');
+        s.textContent = a.title.length > 14 ? a.title.slice(0, 12) + '…' : a.title;
+        s.title = a.title; s.addEventListener('click', () => openModal(a)); col.appendChild(s);
+      });
+      if (shows.length > 3) {
+        const m = document.createElement('div'); m.className = 'sched-empty';
+        m.textContent = `+${shows.length - 3} more`; col.appendChild(m);
+      }
+    }
+    inner.appendChild(col);
+  });
+}
 
 // ── INIT ─────────────────────────────────────────────────────────
 // Show auth prompt after a brief delay if not logged in
