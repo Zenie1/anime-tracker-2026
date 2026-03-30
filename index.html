@@ -116,6 +116,18 @@ header {
 .user-btn:hover { border-color: var(--gold); color: var(--gold); }
 .user-btn.logged-in { color: var(--gold); border-color: rgba(245,200,66,0.3); }
 
+/* Continue Watching header link */
+.continue-watching-btn {
+  display: none; align-items: center; gap: 0.4rem;
+  background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 2px; padding: 0.32rem 0.65rem;
+  font-family: 'Space Mono', monospace; font-size: 0.56rem; letter-spacing: 0.07em;
+  text-transform: uppercase; color: #22c55e; text-decoration: none;
+  transition: all 0.15s; white-space: nowrap;
+}
+.continue-watching-btn:hover { background: rgba(34,197,94,0.16); border-color: #22c55e; }
+.continue-watching-btn.visible { display: flex; }
+
 /* ── HERO ── */
 .hero {
   background: var(--red);
@@ -654,6 +666,42 @@ footer a:hover { color: var(--paper); }
 .sched-show.is-today { color: var(--gold); font-weight: 700; }
 .sched-empty { font-family: 'Space Mono', monospace; font-size: 0.53rem; color: rgba(255,255,255,0.12); padding: 0.05rem 0; }
 
+
+/* ── WATCH NOW BUTTON ── */
+.modal-watch-btn {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.4);
+  border-radius: 2px; padding: 0.42rem 0.85rem; cursor: pointer;
+  font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.07em;
+  text-transform: uppercase; color: #22c55e;
+  text-decoration: none; transition: all 0.15s; font-weight: 700;
+}
+.modal-watch-btn:hover {
+  background: rgba(34,197,94,0.2); border-color: #22c55e;
+  transform: translateY(-1px); box-shadow: 0 4px 14px rgba(34,197,94,0.18);
+}
+.modal-watch-btn svg { flex-shrink: 0; }
+.modal-watch-btn .watch-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #22c55e; animation: blink 2s infinite; flex-shrink: 0;
+}
+/* Guest lock icon on watch btn */
+.modal-watch-btn.locked {
+  color: var(--muted); border-color: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03); cursor: not-allowed;
+  pointer-events: none; opacity: 0.55;
+}
+
+/* Card-level "LIVE" badge for airing shows (signed-in only) */
+.card-live-badge {
+  position: absolute; top: 0.5rem; right: 0.5rem; z-index: 5;
+  background: rgba(34,197,94,0.9); color: #fff;
+  font-family: 'Space Mono', monospace; font-size: 0.42rem; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 0.18rem 0.38rem; border-radius: 2px;
+  font-weight: 700; pointer-events: none;
+  animation: blink 2s infinite;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
@@ -702,6 +750,14 @@ footer a:hover { color: var(--paper); }
   <div class="header-right">
     <div class="live-dot loading"></div>
     <span class="live-label">Connecting to Jikan / MAL…</span>
+    <a class="continue-watching-btn" id="continueWatchingBtn"
+       href="https://aniwatchtv.to/user/continue-watching"
+       target="_blank" rel="noopener noreferrer"
+       style="display:none"
+       title="Continue Watching on AniWatch">
+      <div class="watch-badge-dot" style="width:5px;height:5px"></div>
+      Continue Watching
+    </a>
     <button class="user-btn" id="userBtn" onclick="openAuthOrProfile()">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
       <span id="userBtnLabel">Sign In</span>
@@ -957,8 +1013,11 @@ function loginSuccess(username) {
   const btn = document.getElementById('userBtn');
   btn.classList.add('logged-in');
   document.getElementById('userBtnLabel').textContent = username;
+  // Show the Continue Watching shortcut
+  const cwBtn = document.getElementById('continueWatchingBtn');
+  if (cwBtn) cwBtn.classList.add('visible');
   showToast(`Welcome back, ${username}! ★`);
-  render(); // Re-render to show heart states
+  render(); // Re-render to show heart states + Watch Now buttons
 }
 function persistUser() {
   if (!currentUser) return;
@@ -976,6 +1035,9 @@ function openAuthOrProfile() {
       currentUser = null;
       document.getElementById('userBtn').classList.remove('logged-in');
       document.getElementById('userBtnLabel').textContent = 'Sign In';
+      // Hide Continue Watching shortcut
+      const cwBtn = document.getElementById('continueWatchingBtn');
+      if (cwBtn) cwBtn.classList.remove('visible');
       showToast('Signed out.');
       render();
     }
@@ -1384,6 +1446,7 @@ function cardHTML(a,i) {
     <div class="poster-wrap" style="background:${placeholderColor}">
       <img ${imgAttr} alt="${escHtml(a.title)}" loading="lazy" data-malid="${a.malId}" onload="this.classList.add('loaded');this.removeAttribute('data-pending')">
       <div class="badge-row"><span class="season-badge ${sbc}">${sbl}</span>${score}</div>
+      ${(a.status==='airing'&&currentUser)?'<div class="card-live-badge">● Live</div>':''}
       <div class="status-ribbon ${stc}">${stl}</div>
     </div>
     <button class="heart-btn${faved?' active':''}" data-id="${a.malId}" title="${faved?'Remove from watchlist':'Add to watchlist'}" onclick="event.stopPropagation();toggleFav(${a.malId})">${faved?'♥':'♡'}</button>
@@ -1428,6 +1491,33 @@ function render() {
     });
   });
   startCountdowns();
+}
+
+// ── WATCH NOW HELPER ─────────────────────────────────────────────
+function buildWatchBtn(a) {
+  // Only for currently airing 2026 shows
+  if (a.status !== 'airing') return '';
+
+  // Must be signed in
+  if (!currentUser) return '';
+
+  // Build AniWatch search URL — search by title gives best results
+  // The continue-watching page is the user's hub once they've started a show
+  const searchTitle = encodeURIComponent(a.title || '');
+  const aniWatchSearch = `https://aniwatchtv.to/search?keyword=${searchTitle}`;
+  const continueWatching = 'https://aniwatchtv.to/user/continue-watching';
+
+  return `
+    <a class="modal-watch-btn"
+       href="${aniWatchSearch}"
+       target="_blank"
+       rel="noopener noreferrer"
+       title="Watch ${escHtml(a.title)} on AniWatch"
+       onclick="event.stopPropagation()">
+      <div class="watch-badge-dot"></div>
+      Watch Now
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    </a>`;
 }
 
 // ── MODAL ────────────────────────────────────────────────────────
@@ -1500,6 +1590,7 @@ function openModal(a) {
       </div>
       <div class="modal-action-bar">
         <button class="modal-fav-btn${faved?' active':''}" id="modalFavBtn" data-id="${a.malId}" onclick="toggleFav(${a.malId})">${faved?'♥ In Watchlist':'♡ Add to Watchlist'}</button>
+        ${buildWatchBtn(a)}
       </div>
       <p class="modal-synopsis">${escHtml(a.synopsis)}</p>
       ${trailerHTML}
