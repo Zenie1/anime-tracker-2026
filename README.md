@@ -27,13 +27,29 @@ Just open it in a browser or serve it with any static file host.
 
 ## 🔧 What changed in this update
 
-- **Fixed the Jikan API layer.** `corsproxy.io` had changed its URL format
-  (now needs `?url=`) and the fallback proxies had gone stale, so any hiccup
-  in the direct fetch would leave the app stuck on the error screen even
-  though the Jikan API itself was healthy. The fetch layer now tries a
-  direct request first, retries on rate-limiting (HTTP 429) with backoff,
-  and falls back through a refreshed set of CORS proxies. A single malformed
-  entry from the API can no longer crash the whole load.
+- **Fixed the Jikan API layer.** The real cause of "Failed to load from Jikan
+  API" was the *shape of the URL*, not the network. Jikan sits behind a CDN
+  whose origin is slow enough that any cache-cold URL times out with a
+  **504 Gateway Timeout**. The app requested
+  `/seasons/2026/winter?filter=tv&page=1&limit=25` — a URL essentially no
+  other client asks for, so it was never warm in the cache, so it 504'd every
+  single time. The bare `/seasons/2026/winter` URL is hit constantly by other
+  clients, stays warm, and returns 200 instantly. The app now requests the
+  bare URL and filters by type client-side (which it was already doing anyway).
+
+  On top of that the fetch layer now: retries 5xx/timeouts with backoff (the
+  failed request itself often warms Jikan's cache, so a retry succeeds);
+  falls back through refreshed CORS proxies, including a fixed `corsproxy.io`
+  URL format that had changed to require `?url=`; keeps partial results
+  instead of discarding a whole season when a deep page is cold; and can no
+  longer be crashed by a single malformed entry.
+
+- **The app no longer shows an empty error screen when it has usable data.**
+  If Jikan is unreachable it falls back to your last saved copy (however old)
+  and labels it "Offline copy". A failed background refresh keeps the data
+  already on screen instead of wiping it. When it genuinely can't show
+  anything, the error now names the actual failure and which seasons failed,
+  rather than a generic "Failed to load".
 - **Replaced the dead streaming site.** Every "Watch on AniWatch" link
   (aniwatchtv.to) pointed at a site that's been taken down. Watch links now
   point to [Anidap](https://anidap.se) instead:

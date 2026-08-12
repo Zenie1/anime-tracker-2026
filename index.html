@@ -1243,8 +1243,8 @@ footer a:hover { color: var(--paper); }
 <script>
 // ── CONSTANTS ────────────────────────────────────────────────────
 const JIKAN_DIRECT = 'https://api.jikan.moe/v4';
-// corsproxy.io now requires ?url=, and we add codetabs as a more reliable
-// third fallback. Direct fetch is tried first since Jikan itself sends
+// corsproxy.io now requires ?url=, and codetabs is a more reliable first
+// fallback. Direct fetch is tried first since Jikan itself sends
 // Access-Control-Allow-Origin: * — proxies only kick in if direct fails
 // (flaky network, ad-blocker, or a temporary Jikan CORS hiccup).
 const CORS_PROXIES = [
@@ -1252,41 +1252,73 @@ const CORS_PROXIES = [
   url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
 ];
-let activeProxy = null; // null = try direct first
+let activeProxy = null;    // null = direct; set once a proxy proves it works
+let lastFetchError = null; // surfaced in the error banner so failures are debuggable
 
 function jikanDelay(ms){return new Promise(r=>setTimeout(r,ms));}
 
-async function jikanFetchOnce(url) {
-  const res = await fetch(url);
-  if (res.status === 429) { const e = new Error('Rate limited'); e.rateLimited = true; throw e; }
+// A single HTTP attempt. 429 and 5xx are marked retryable: Jikan sits behind a
+// CDN whose origin times out (504) on cache-cold URLs, but that first request
+// usually still warms the cache — so retrying the same URL tends to succeed.
+async function rawFetchJson(url, timeoutMs = 20000) {
+  const opts = {};
+  if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+    opts.signal = AbortSignal.timeout(timeoutMs);
+  }
+  const res = await fetch(url, opts);
+  if (res.status === 429) { const e = new Error('Jikan rate limit (429)'); e.retryable = true; throw e; }
+  if (res.status >= 500)  { const e = new Error(`Jikan busy (${res.status})`); e.retryable = true; throw e; }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-async function jikanFetch(path, attempt = 0) {
+function isRetryable(e) {
+  return !!e && (e.retryable || e.name === 'TimeoutError' || e.name === 'AbortError' || e.name === 'TypeError');
+}
+
+// Retry one transport (direct, or a specific proxy) with linear backoff.
+// Timings are deliberately tight: a full ladder of slow retries turns an API
+// outage into a minute-long blank screen, which is worse than failing fast.
+const RETRY_BACKOFF_MS = 800;
+
+async function attemptTransport(proxy, directUrl, tries, timeoutMs) {
+  let err;
+  for (let i = 0; i < tries; i++) {
+    try { return await rawFetchJson(proxy ? proxy(directUrl) : directUrl, timeoutMs); }
+    catch (e) {
+      err = e;
+      if (!isRetryable(e)) break;
+      if (i < tries - 1) await jikanDelay(RETRY_BACKOFF_MS * (i + 1));
+    }
+  }
+  throw err;
+}
+
+// opts.fast — best-effort single transport, used for optional extra pages where
+// we already have usable data and shouldn't burn seconds proving a page is cold.
+async function jikanFetch(path, opts = {}) {
   const directUrl = `${JIKAN_DIRECT}${path}`;
 
-  try {
-    if (activeProxy !== null) return await jikanFetchOnce(activeProxy(directUrl));
-    return await jikanFetchOnce(directUrl);
-  } catch (e) {
-    if (e.rateLimited && attempt < 3) {
-      await jikanDelay(1000 * (attempt + 1));
-      return jikanFetch(path, attempt + 1);
-    }
-    if (activeProxy !== null) throw e; // already locked to a proxy and it failed — surface the error
+  if (opts.fast) {
+    return attemptTransport(activeProxy, directUrl, 2, 8000);
   }
 
-  // Direct failed (network/CORS) — try each proxy in order until one works
-  for (let i = 0; i < CORS_PROXIES.length; i++) {
+  // Prefer whatever worked last time, but always keep the other options open —
+  // a proxy that dies mid-session shouldn't take the whole app down with it.
+  const ladder = activeProxy
+    ? [activeProxy, null, ...CORS_PROXIES.filter(p => p !== activeProxy)]
+    : [null, ...CORS_PROXIES];
+
+  let lastErr;
+  for (const transport of ladder) {
     try {
-      const data = await jikanFetchOnce(CORS_PROXIES[i](directUrl));
-      activeProxy = CORS_PROXIES[i]; // lock in this proxy for the session
-      console.info(`Using CORS proxy #${i + 1} for remaining requests`);
+      const data = await attemptTransport(transport, directUrl, transport === null ? 2 : 1, 15000);
+      activeProxy = transport;
       return data;
-    } catch { /* try next */ }
+    } catch (e) { lastErr = e; }
   }
-  throw new Error('All fetch methods failed — check your connection');
+  lastFetchError = lastErr;
+  throw lastErr || new Error('All fetch methods failed');
 }
 const CACHE_KEY    = 'anitracker_cache_v4';
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -1566,40 +1598,64 @@ let minScore      = 0;
 function saveCache(data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
 }
-function loadCache() {
+// Returns { data, ts, stale } or null. Stale entries are only handed out when
+// explicitly asked for — used as a last resort when the API is unreachable.
+function loadCache(allowStale = false) {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const { ts, data } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL_MS) return null;
-    return data;
+    if (!Array.isArray(data) || !data.length) return null;
+    const stale = Date.now() - ts > CACHE_TTL_MS;
+    if (stale && !allowStale) return null;
+    return { data, ts, stale };
   } catch { return null; }
 }
 
 // ── JIKAN API ────────────────────────────────────────────────────
-async function fetchSeasonPage(season, year, page = 1) {
-  return jikanFetch(`/seasons/${year}/${season}?filter=tv&page=${page}&limit=25`);
-}
+// IMPORTANT: request the BARE season URL, with no query string on page 1.
+// Jikan sits behind a CDN and its origin is slow enough that cache-cold URLs
+// time out with a 504. `/seasons/2026/winter` is requested constantly by other
+// clients so it stays warm and returns instantly, while the old parameterised
+// form (`?filter=tv&page=1&limit=25`) was a URL essentially nobody else asked
+// for — permanently cache-cold, and therefore a permanent 504. That single
+// difference is what broke the whole app. Type filtering now happens
+// client-side in fetchAndUpdate(), which was already filtering anyway.
+const MAX_PAGES_PER_SEASON = 5;
+let lastLoadReport = { ok: [], failed: [] };
+
 async function fetchOneSeason(season) {
-  const first = await fetchSeasonPage(season, YEAR, 1);
+  const first = await jikanFetch(`/seasons/${YEAR}/${season}`);
   const pages = first.pagination?.last_visible_page ?? 1;
   const all   = [...(first.data ?? [])];
-  for (let p = 2; p <= Math.min(pages, 4); p++) {
-    await jikanDelay(400);
-    try { const next = await fetchSeasonPage(season, YEAR, p); all.push(...(next.data ?? [])); }
-    catch { break; }
+  for (let p = 2; p <= Math.min(pages, MAX_PAGES_PER_SEASON); p++) {
+    await jikanDelay(420);
+    try {
+      const next = await jikanFetch(`/seasons/${YEAR}/${season}?page=${p}`, { fast: true });
+      all.push(...(next.data ?? []));
+    } catch (e) {
+      // Deeper pages are less likely to be cached. Keep what we already have
+      // rather than discarding the season.
+      console.warn(`${season} page ${p} unavailable:`, e.message);
+      break;
+    }
   }
   return all;
 }
 async function fetchAllSeasons() {
   const results = [];
+  lastLoadReport = { ok: [], failed: [] };
   for (const season of SEASONS) {
     try {
       const items = await fetchOneSeason(season);
       items.forEach(a => { if (!a.season) a.season = season; });
       results.push(...items);
-      if (season !== 'fall') await jikanDelay(600);
-    } catch(e) { console.warn(`Failed to fetch ${season}:`, e.message); }
+      lastLoadReport.ok.push(season);
+    } catch(e) {
+      lastLoadReport.failed.push(`${season} (${e.message})`);
+      console.warn(`Failed to fetch ${season}:`, e.message);
+    }
+    if (season !== 'fall') await jikanDelay(600);
   }
   return results;
 }
@@ -1665,41 +1721,73 @@ function detectStream(raw) {
 }
 
 // ── LOAD PIPELINE ────────────────────────────────────────────────
+function paintDB(source) {
+  setLiveStatus(source === 'stale' ? 'stale' : 'live');
+  buildUI(); render();
+  requestAnimationFrame(flushPendingImages);
+  setTimeout(buildSpotlight, 100);
+  setTimeout(buildSchedule, 50);
+}
+
 async function loadData(forceRefresh = false) {
   setLiveStatus('loading');
   if (!forceRefresh) {
     const cached = loadCache();
-    if (cached?.length) {
-      DB = cached;
-      cached.forEach(a => { if (a.imageUrl) imgCache[String(a.malId)] = a.imageUrl; });
-      setLiveStatus('live');
-      buildUI(); render();
-      setTimeout(buildSpotlight, 100);
-      setTimeout(buildSchedule, 50);
+    if (cached) {
+      DB = cached.data;
+      DB.forEach(a => { if (a.imageUrl) imgCache[String(a.malId)] = a.imageUrl; });
+      paintDB('cache');
       showToast('Loaded from cache — refreshing in background…');
-      fetchAndUpdate().catch(() => {});
+      fetchAndUpdate().catch(e => console.warn('Background refresh failed:', e.message));
       return;
     }
   }
   showSkeletons(12);
   try { await fetchAndUpdate(); }
-  catch(e) { console.error('Initial load failed:', e); setLiveStatus('error'); showError(); }
+  catch(e) {
+    console.error('Initial load failed:', e);
+    // Jikan being down is not a reason to show an empty app: fall back to
+    // whatever we cached last time, however old it is.
+    const stale = loadCache(true);
+    if (stale) {
+      DB = stale.data;
+      DB.forEach(a => { if (a.imageUrl) imgCache[String(a.malId)] = a.imageUrl; });
+      paintDB('stale');
+      showToast('Jikan unreachable — showing your last saved copy');
+      return;
+    }
+    setLiveStatus('error');
+    showError(e);
+  }
 }
 async function fetchAndUpdate() {
   const raw = await fetchAllSeasons();
-  if (!raw.length) throw new Error('No data returned');
-  DB = raw.filter(a => a.type==='TV'||a.type==='ONA'||!a.type).map(normalise).filter(a=>a && a.malId);
-  DB = [...new Map(DB.map(a=>[a.malId,a])).values()];
+  if (!raw.length) {
+    const why = lastLoadReport.failed.length
+      ? `every season failed — ${lastLoadReport.failed.join(', ')}`
+      : 'no data returned';
+    throw new Error(why);
+  }
+  const next = [...new Map(
+    raw.filter(a => a.type==='TV'||a.type==='ONA'||!a.type)
+       .map(normalise).filter(a => a && a.malId)
+       .map(a => [a.malId, a])
+  ).values()];
+  // A partial result that's worse than what we already have (e.g. 3 of 4
+  // seasons 504'd on a background refresh) shouldn't clobber good data.
+  if (DB.length && next.length < DB.length * 0.5) {
+    console.warn(`Refresh returned only ${next.length} of ${DB.length} — keeping existing data.`);
+    return;
+  }
+  DB = next;
   saveCache(DB);
-  setLiveStatus('live');
-  buildUI(); render();
-  requestAnimationFrame(flushPendingImages);
-  setTimeout(buildSpotlight, 100);
-  setTimeout(buildSchedule, 50);
-  showToast('Data refreshed from Jikan / MAL ✓');
+  paintDB('live');
+  showToast(lastLoadReport.failed.length
+    ? `Refreshed — ${lastLoadReport.failed.length} season(s) unavailable`
+    : 'Data refreshed from Jikan / MAL ✓');
 }
 setInterval(() => {
-  if (!document.hidden) fetchAndUpdate().catch(e => console.warn('Background refresh failed:', e));
+  if (!document.hidden) fetchAndUpdate().catch(e => console.warn('Background refresh failed:', e.message));
 }, REFRESH_MS);
 
 // ── UI STATUS ────────────────────────────────────────────────────
@@ -1710,6 +1798,7 @@ function setLiveStatus(state) {
   dot.className = 'live-dot';
   if (state==='loading')      { dot.classList.add('loading'); label.textContent='Fetching from Jikan / MAL…'; }
   else if (state==='error')   { dot.classList.add('error');   label.textContent='Data load failed'; }
+  else if (state==='stale')   { dot.classList.add('loading'); label.textContent='Offline copy — Jikan unreachable'; }
   else                        {                               label.textContent='Live via Jikan / MAL'; }
 }
 function showSkeletons(n) {
@@ -1723,10 +1812,21 @@ function showSkeletons(n) {
       </div>
     </div>`).join('');
 }
-function showError() {
+function showError(err) {
+  const detail = err?.message ? escHtml(err.message) : 'unknown error';
+  const hint = location.protocol === 'file:'
+    ? 'You\'re opening this straight from disk (file://). Some browsers block API calls from file:// pages — try serving the folder instead, e.g. <code>python -m http.server</code>, then open http://localhost:8000.'
+    : 'Jikan (the MyAnimeList API) is likely rate-limiting or temporarily down. Retry in a moment.';
   document.getElementById('grid').innerHTML=`
-    <div class="error-banner">⚠ Failed to load from Jikan API.
-      <button class="error-retry" onclick="loadData(true)">Retry</button>
+    <div class="error-banner" style="flex-direction:column;align-items:flex-start;gap:.6rem">
+      <div style="display:flex;align-items:center;gap:.75rem;width:100%">
+        <strong>⚠ Couldn't load anime data</strong>
+        <button class="error-retry" onclick="loadData(true)">Retry</button>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);line-height:1.6">
+        <div><b>Details:</b> ${detail}</div>
+        <div style="margin-top:.35rem">${hint}</div>
+      </div>
     </div>`;
 }
 let toastTimer;
