@@ -16,7 +16,8 @@ A dynamic web application that tracks anime releases for 2026 by season.
 - HTML5
 - CSS3
 - JavaScript (Vanilla)
-- Jikan API (MyAnimeList)
+- **AniList GraphQL API** (primary data source)
+- Jikan API / MyAnimeList (automatic fallback)
 
 ## 🌐 Live Demo
 👉 (Add your Netlify/GitHub Pages link here)
@@ -27,22 +28,33 @@ Just open it in a browser or serve it with any static file host.
 
 ## 🔧 What changed in this update
 
-- **Fixed the Jikan API layer.** The real cause of "Failed to load from Jikan
-  API" was the *shape of the URL*, not the network. Jikan sits behind a CDN
-  whose origin is slow enough that any cache-cold URL times out with a
-  **504 Gateway Timeout**. The app requested
-  `/seasons/2026/winter?filter=tv&page=1&limit=25` — a URL essentially no
-  other client asks for, so it was never warm in the cache, so it 504'd every
-  single time. The bare `/seasons/2026/winter` URL is hit constantly by other
-  clients, stays warm, and returns 200 instantly. The app now requests the
-  bare URL and filters by type client-side (which it was already doing anyway).
+- **Switched the primary data source to the AniList GraphQL API.** Jikan
+  proved too unreliable to build on: it sits behind a CDN whose origin is slow
+  enough that cache-cold URLs return **504 Gateway Timeout**, and during
+  testing even bare season URLs intermittently 504'd. AniList is free, needs
+  no API key, sends `Access-Control-Allow-Origin: *` (so no CORS proxy is
+  needed at all), returns 50 results per request instead of 25, and isn't
+  fronted by a cache that fails cold.
 
-  On top of that the fetch layer now: retries 5xx/timeouts with backoff (the
-  failed request itself often warms Jikan's cache, so a retry succeeds);
-  falls back through refreshed CORS proxies, including a fixed `corsproxy.io`
-  URL format that had changed to require `?url=`; keeps partial results
-  instead of discarding a whole season when a deep page is cold; and can no
-  longer be crashed by a single malformed entry.
+  It's also simply better data. The app now gets **real streaming links** from
+  AniList's `externalLinks` — the old code guessed the platform by matching
+  the string "crunchyroll" against producer names — and a **real next-episode
+  air time** from `nextAiringEpisode`, replacing the old assumption that every
+  show airs exactly 7 days after its premiere. Cards now read "EP 7 in 1d 23h"
+  instead of a generic "Airing Now".
+
+- **Jikan is kept as an automatic fallback**, and its original bug is fixed
+  too. That bug is worth recording: the app requested
+  `/seasons/2026/winter?filter=tv&page=1&limit=25` — a URL essentially no
+  other client asks for, so it was never warm in Jikan's cache, so it 504'd
+  *every single time*. The bare `/seasons/2026/winter` URL is requested
+  constantly by other clients, stays warm, and returns 200 instantly. The
+  fallback now uses the bare URL and filters by type client-side (which the
+  code was already doing anyway), retries 5xx/timeouts with backoff, and uses
+  a corrected `corsproxy.io` URL format that had changed to require `?url=`.
+
+  If AniList is unreachable the app silently falls back to Jikan; the header
+  shows which source the data on screen actually came from.
 
 - **The app no longer shows an empty error screen when it has usable data.**
   If Jikan is unreachable it falls back to your last saved copy (however old)

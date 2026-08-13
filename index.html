@@ -1320,7 +1320,8 @@ async function jikanFetch(path, opts = {}) {
   lastFetchError = lastErr;
   throw lastErr || new Error('All fetch methods failed');
 }
-const CACHE_KEY    = 'anitracker_cache_v4';
+const CACHE_KEY    = 'anitracker_cache_v5'; // bumped: entries gained AniList fields
+let activeSource   = 'AniList';             // which API the data on screen came from
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const REFRESH_MS   = 60 * 60 * 1000;
 const SEASONS      = ['winter', 'spring', 'summer', 'fall'];
@@ -1542,9 +1543,19 @@ function getCountdownFull(isoDate) {
   const h = Math.floor((diff % 86400000) / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
-  if (d > 0) return `Airing in ${d}d ${h}h ${m}m`;
-  if (h > 0) return `Airing in ${h}h ${m}m ${s}s`;
-  return `Airing in ${m}m ${s}s`;
+  // Returns the bare duration; callers supply their own label.
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  return `${m}m ${s}s`;
+}
+
+// AniList gives a real next-episode air time. Fall back to the premiere date
+// (all Jikan-sourced entries) when it isn't available.
+function countdownTarget(a) {
+  if (a.status === 'airing' && a.nextEpAt) {
+    return { iso: new Date(a.nextEpAt).toISOString(), label: `EP ${a.nextEp} in`, lbl: 'Next Episode' };
+  }
+  return { iso: a.premiere, label: 'Airing in', lbl: 'Premiere' };
 }
 
 // Tick countdowns every second
@@ -1554,14 +1565,14 @@ function startCountdowns() {
   countdownInterval = setInterval(() => {
     document.querySelectorAll('.countdown[data-premiere]').forEach(el => {
       const cd = getCountdown(el.dataset.premiere);
-      if (cd) { el.textContent = `Airing in ${cd}`; el.classList.remove('past'); }
-      else { el.textContent = 'Airing'; el.classList.add('past'); }
+      if (cd) { el.textContent = `${el.dataset.label || 'Airing in'} ${cd}`; el.classList.remove('past'); }
+      else { el.textContent = el.dataset.done || 'Airing'; el.classList.add('past'); }
     });
     // Also update modal countdown if open
     const mcd = document.getElementById('modalCountdownEl');
     if (mcd && mcd.dataset.premiere) {
       const cd = getCountdownFull(mcd.dataset.premiere);
-      mcd.textContent = cd || '▶ Currently Airing';
+      mcd.textContent = cd ? `${mcd.dataset.label || 'Airing in'} ${cd}` : '▶ Currently Airing';
       mcd.classList.toggle('past', !cd);
     }
   }, 1000);
@@ -1595,8 +1606,8 @@ let sortMode      = 'default';
 let minScore      = 0;
 
 // ── CACHE HELPERS ────────────────────────────────────────────────
-function saveCache(data) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
+function saveCache(data, source) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data, source })); } catch(e) {}
 }
 // Returns { data, ts, stale } or null. Stale entries are only handed out when
 // explicitly asked for — used as a last resort when the API is unreachable.
@@ -1604,11 +1615,12 @@ function loadCache(allowStale = false) {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    const { ts, data } = JSON.parse(raw);
+    const { ts, data, source } = JSON.parse(raw);
     if (!Array.isArray(data) || !data.length) return null;
     const stale = Date.now() - ts > CACHE_TTL_MS;
     if (stale && !allowStale) return null;
-    return { data, ts, stale };
+    if (source) activeSource = source;
+    return { data, ts, stale, source };
   } catch { return null; }
 }
 
@@ -1658,6 +1670,194 @@ async function fetchAllSeasons() {
     if (season !== 'fall') await jikanDelay(600);
   }
   return results;
+}
+
+// ══ ANILIST (primary source) ═════════════════════════════════════
+// AniList's GraphQL API is now the primary source. Versus Jikan it is:
+//   • free and key-less, and sends Access-Control-Allow-Origin: * — so it
+//     works straight from the browser with no CORS proxy in the way;
+//   • 50 results per request instead of 25, so a whole year is ~8 requests;
+//   • not fronted by a cache that 504s on cold URLs (the bug that broke this
+//     app in the first place);
+//   • richer — it gives us REAL streaming links and a REAL next-episode air
+//     time, instead of the old guesswork (matching "crunchyroll" against
+//     producer names, and assuming every show airs exactly 7 days apart).
+// Jikan is kept as an automatic fallback so an AniList outage degrades
+// gracefully instead of taking the app down.
+const ANILIST_URL = 'https://graphql.anilist.co';
+const ANILIST_PAGES_PER_SEASON = 2; // 2 × 50 = up to 100 shows per season
+const ANILIST_QUERY = `
+query ($season: MediaSeason, $seasonYear: Int, $page: Int) {
+  Page(page: $page, perPage: 50) {
+    pageInfo { currentPage hasNextPage }
+    media(season: $season, seasonYear: $seasonYear, type: ANIME, sort: POPULARITY_DESC) {
+      id
+      idMal
+      title { romaji english native }
+      description
+      episodes
+      averageScore
+      status
+      season
+      format
+      genres
+      siteUrl
+      coverImage { extraLarge large }
+      startDate { year month day }
+      studios(isMain: true) { nodes { name } }
+      trailer { id site }
+      nextAiringEpisode { airingAt episode }
+      externalLinks { site url type }
+    }
+  }
+}`;
+
+async function anilistFetchPage(season, page) {
+  const opts = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      query: ANILIST_QUERY,
+      variables: { season: String(season).toUpperCase(), seasonYear: YEAR, page }
+    })
+  };
+  if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) opts.signal = AbortSignal.timeout(15000);
+
+  const res = await fetch(ANILIST_URL, opts);
+  if (res.status === 429) { const e = new Error('AniList rate limit (429)'); e.retryable = true; throw e; }
+  if (res.status >= 500) { const e = new Error(`AniList busy (${res.status})`); e.retryable = true; throw e; }
+  if (!res.ok) throw new Error(`AniList HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.errors && json.errors.length) throw new Error(json.errors[0].message || 'AniList query error');
+  const pageData = json.data && json.data.Page;
+  if (!pageData) throw new Error('AniList returned an unexpected payload');
+  return pageData;
+}
+
+async function fetchSeasonAniList(season) {
+  const all = [];
+  for (let page = 1; page <= ANILIST_PAGES_PER_SEASON; page++) {
+    let data = null, err = null;
+    for (let t = 0; t < 2; t++) {
+      try { data = await anilistFetchPage(season, page); err = null; break; }
+      catch (e) { err = e; if (!isRetryable(e)) break; if (t === 0) await jikanDelay(RETRY_BACKOFF_MS); }
+    }
+    // Page 1 failing means we have nothing for this season; later pages are a
+    // bonus, so keep whatever already arrived.
+    if (err) { if (page === 1) throw err; break; }
+    all.push(...(data.media || []));
+    if (!data.pageInfo || !data.pageInfo.hasNextPage) break;
+    await jikanDelay(350);
+  }
+  return all;
+}
+
+async function fetchAllSeasonsAniList() {
+  const out = [];
+  lastLoadReport = { ok: [], failed: [] };
+  for (const season of SEASONS) {
+    try {
+      const items = await fetchSeasonAniList(season);
+      out.push(...items.map(m => normaliseAniList(m, season)).filter(Boolean));
+      lastLoadReport.ok.push(season);
+    } catch (e) {
+      lastLoadReport.failed.push(`${season} (${e.message})`);
+      console.warn(`AniList ${season} failed:`, e.message);
+    }
+    await jikanDelay(350);
+  }
+  return out;
+}
+
+// ── ANILIST NORMALISE ────────────────────────────────────────────
+const ANILIST_STATUS  = { RELEASING:'airing', FINISHED:'finished', NOT_YET_RELEASED:'upcoming', CANCELLED:'finished', HIATUS:'airing' };
+const ANILIST_FORMATS = ['TV', 'TV_SHORT', 'ONA'];
+const WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+// AniList descriptions contain light HTML (<br>, <i>, <b>).
+function stripHtml(s) {
+  if (!s) return '';
+  const entities = { '&amp;':'&', '&lt;':'<', '&gt;':'>', '&quot;':'"', '&#39;':"'", '&nbsp;':' ' };
+  return String(s)
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&(?:amp|lt|gt|quot|#39|nbsp);/g, m => entities[m] || m)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const STREAM_MAP = [
+  [/crunchyroll/i,  { label:'Crunchyroll', cls:'sc-cr'  }],
+  [/netflix/i,      { label:'Netflix',     cls:'sc-nf'  }],
+  [/hidive/i,       { label:'HIDIVE',      cls:'sc-hi'  }],
+  [/disney/i,       { label:'Disney+',     cls:'sc-dis' }],
+  [/amazon|prime/i, { label:'Prime Video', cls:'sc-tba' }],
+  [/hulu/i,         { label:'Hulu',        cls:'sc-tba' }],
+];
+
+function detectStreamAniList(links) {
+  const streaming = (links || []).filter(l => l && (!l.type || l.type === 'STREAMING'));
+  for (const [re, val] of STREAM_MAP) {
+    const hit = streaming.find(l => re.test(l.site || '') || re.test(l.url || ''));
+    if (hit) return { label: val.label, cls: val.cls, url: hit.url || null };
+  }
+  const first = streaming[0];
+  if (first && first.site) return { label: first.site, cls: 'sc-tba', url: first.url || null };
+  return { label: 'TBA', cls: 'sc-tba', url: null };
+}
+
+function normaliseAniList(m, fallbackSeason) {
+  try {
+    if (!m || !ANILIST_FORMATS.includes(m.format)) return null;
+    // Prefer the MAL id so watchlists/pins saved by the old Jikan-backed
+    // version keep working; fall back to the AniList id when there is no
+    // MAL entry.
+    const id = m.idMal || m.id;
+    if (!id) return null;
+
+    const img = (m.coverImage && (m.coverImage.extraLarge || m.coverImage.large)) || null;
+    if (img) imgCache[String(id)] = img;
+
+    const sd = m.startDate || {};
+    const premiere = (sd.year && sd.month && sd.day)
+      ? `${sd.year}-${String(sd.month).padStart(2,'0')}-${String(sd.day).padStart(2,'0')}`
+      : null;
+
+    const stream = detectStreamAniList(m.externalLinks);
+    const nextEpAt = m.nextAiringEpisode && m.nextAiringEpisode.airingAt
+      ? m.nextAiringEpisode.airingAt * 1000 : null;
+    const dayBasis = nextEpAt || (premiere ? new Date(premiere + 'T12:00:00').getTime() : null);
+
+    return {
+      malId: id,
+      anilistId: m.id,
+      hasMal: !!m.idMal,
+      siteUrl: m.siteUrl || null,
+      title: (m.title && (m.title.english || m.title.romaji)) || 'Untitled',
+      jpTitle: (m.title && (m.title.native || m.title.romaji)) || '',
+      studio: (m.studios && m.studios.nodes && m.studios.nodes[0] && m.studios.nodes[0].name) || 'Unknown',
+      season: String(m.season || fallbackSeason || 'tba').toLowerCase(),
+      premiere,
+      premiereDisplay: formatPremiere(premiere, null),
+      airingDay: dayBasis ? WEEKDAYS[new Date(dayBasis).getDay()] : 'TBA',
+      episodes: m.episodes || 12,
+      genres: m.genres || [],
+      synopsis: stripHtml(m.description) || 'No synopsis available.',
+      streaming: stream.label,
+      streamClass: stream.cls,
+      streamUrl: stream.url,
+      cast: [],
+      score: m.averageScore ? Math.round(m.averageScore) / 10 : null,
+      status: ANILIST_STATUS[m.status] || 'upcoming',
+      imageUrl: img,
+      trailerId: (m.trailer && m.trailer.site === 'youtube' && m.trailer.id) ? m.trailer.id : null,
+      nextEp: (m.nextAiringEpisode && m.nextAiringEpisode.episode) || null,
+      nextEpAt,
+    };
+  } catch (e) {
+    console.warn('Skipping malformed AniList entry:', e);
+    return null;
+  }
 }
 
 // ── NORMALISE ────────────────────────────────────────────────────
@@ -1761,30 +1961,42 @@ async function loadData(forceRefresh = false) {
   }
 }
 async function fetchAndUpdate() {
-  const raw = await fetchAllSeasons();
-  if (!raw.length) {
-    const why = lastLoadReport.failed.length
-      ? `every season failed — ${lastLoadReport.failed.join(', ')}`
-      : 'no data returned';
-    throw new Error(why);
+  let next = [], sourceUsed = null;
+  const notes = [];
+
+  // 1) AniList — primary.
+  try {
+    const items = await fetchAllSeasonsAniList();
+    if (items.length) { next = items; sourceUsed = 'AniList'; }
+    else notes.push(`AniList: ${lastLoadReport.failed.join(', ') || 'returned nothing'}`);
+  } catch (e) { notes.push(`AniList: ${e.message}`); }
+
+  // 2) Jikan — automatic fallback.
+  if (!next.length) {
+    console.warn('AniList unavailable — falling back to Jikan…');
+    try {
+      const raw = await fetchAllSeasons();
+      const mapped = raw.filter(a => a.type==='TV'||a.type==='ONA'||!a.type)
+                        .map(normalise).filter(a => a && a.malId);
+      if (mapped.length) { next = mapped; sourceUsed = 'Jikan'; }
+      else notes.push(`Jikan: ${lastLoadReport.failed.join(', ') || 'returned nothing'}`);
+    } catch (e) { notes.push(`Jikan: ${e.message}`); }
   }
-  const next = [...new Map(
-    raw.filter(a => a.type==='TV'||a.type==='ONA'||!a.type)
-       .map(normalise).filter(a => a && a.malId)
-       .map(a => [a.malId, a])
-  ).values()];
-  // A partial result that's worse than what we already have (e.g. 3 of 4
-  // seasons 504'd on a background refresh) shouldn't clobber good data.
+
+  if (!next.length) throw new Error(notes.join(' · ') || 'No data returned');
+
+  next = [...new Map(next.map(a => [a.malId, a])).values()];
+  // A partial result that's worse than what we already have (e.g. most of a
+  // background refresh failed) shouldn't clobber good data.
   if (DB.length && next.length < DB.length * 0.5) {
     console.warn(`Refresh returned only ${next.length} of ${DB.length} — keeping existing data.`);
     return;
   }
   DB = next;
-  saveCache(DB);
+  activeSource = sourceUsed;
+  saveCache(DB, sourceUsed);
   paintDB('live');
-  showToast(lastLoadReport.failed.length
-    ? `Refreshed — ${lastLoadReport.failed.length} season(s) unavailable`
-    : 'Data refreshed from Jikan / MAL ✓');
+  showToast(`Loaded ${DB.length} series from ${sourceUsed} ✓`);
 }
 setInterval(() => {
   if (!document.hidden) fetchAndUpdate().catch(e => console.warn('Background refresh failed:', e.message));
@@ -1796,10 +2008,10 @@ function setLiveStatus(state) {
   const label = document.querySelector('.live-label');
   if (!dot||!label) return;
   dot.className = 'live-dot';
-  if (state==='loading')      { dot.classList.add('loading'); label.textContent='Fetching from Jikan / MAL…'; }
+  if (state==='loading')      { dot.classList.add('loading'); label.textContent='Fetching anime data…'; }
   else if (state==='error')   { dot.classList.add('error');   label.textContent='Data load failed'; }
-  else if (state==='stale')   { dot.classList.add('loading'); label.textContent='Offline copy — Jikan unreachable'; }
-  else                        {                               label.textContent='Live via Jikan / MAL'; }
+  else if (state==='stale')   { dot.classList.add('loading'); label.textContent='Offline copy — APIs unreachable'; }
+  else                        {                               label.textContent=`Live via ${activeSource}`; }
 }
 function showSkeletons(n) {
   document.getElementById('grid').innerHTML = Array.from({length:n},()=>`
@@ -1919,15 +2131,18 @@ function cardHTML(a,i) {
   const total = a.episodes || 12;
   const pipWidth = total > 0 ? `${(watchedCount/total)*100}%` : '0%';
 
-  // Countdown
-  const cd = getCountdown(a.premiere);
-  let premiereHTML;
-  if (a.status === 'upcoming' && cd) {
-    premiereHTML = `<div class="countdown" data-premiere="${a.premiere}">Airing in ${cd}</div>`;
+  // Countdown — uses AniList's real next-episode time when we have it.
+  const ct = countdownTarget(a);
+  const cd = getCountdown(ct.iso);
+  let premiereHTML, premiereLbl = ct.lbl;
+  if (cd && (a.status === 'upcoming' || a.status === 'airing')) {
+    premiereHTML = `<div class="countdown" data-premiere="${ct.iso}" data-label="${escHtml(ct.label)}" data-done="● Airing Now">${escHtml(ct.label)} ${cd}</div>`;
   } else if (a.status === 'airing') {
     premiereHTML = `<div class="countdown past">● Airing Now</div>`;
+    premiereLbl = 'Status';
   } else {
     premiereHTML = `<div class="date">${a.premiereDisplay}</div>`;
+    premiereLbl = 'Premiere';
   }
 
   const watchCardLink = (a.status === 'airing')
@@ -1954,7 +2169,7 @@ function cardHTML(a,i) {
       <div class="card-genres">${genres}</div>
       <div class="card-footer">
         <div class="premiere-info">
-          <div class="lbl">Premiere</div>
+          <div class="lbl">${premiereLbl}</div>
           ${premiereHTML}
         </div>
         <span class="stream-chip ${a.streamClass}">${a.streaming.split('/')[0].trim()}</span>
@@ -1991,11 +2206,19 @@ function render() {
 }
 
 // ── WATCH NOW HELPER ─────────────────────────────────────────────
+// Entries sourced from AniList may have no MyAnimeList page at all, in which
+// case we link to their AniList page instead of a 404 on MAL.
+function externalDbUrl(a) {
+  if (a.hasMal === false) return a.siteUrl || `https://anilist.co/anime/${a.anilistId}`;
+  return `https://myanimelist.net/anime/${a.malId}`;
+}
+function externalDbName(a) { return a.hasMal === false ? 'AniList' : 'MyAnimeList'; }
+
 function buildWatchBtn(a) {
   // Show for airing AND upcoming shows (upcoming = user can bookmark)
   if (a.status === 'finished') return '';
-  const href = a.status === 'airing' ? getWatchLink(a) : `https://myanimelist.net/anime/${a.malId}`;
-  const label = a.status === 'airing' ? 'Watch Now on Anidap' : 'Track on MAL';
+  const href = a.status === 'airing' ? getWatchLink(a) : externalDbUrl(a);
+  const label = a.status === 'airing' ? 'Watch Now on Anidap' : `Track on ${externalDbName(a)}`;
   const icon = a.status === 'airing'
     ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21"/></svg>`
     : `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
@@ -2026,10 +2249,11 @@ function openModal(a) {
     ||'<div style="font-family:\'Inter\',sans-serif;font-size:.68rem;color:var(--muted)">Cast data not available</div>';
 
   // Countdown for modal
-  const cd = getCountdownFull(a.premiere);
+  const ct = countdownTarget(a);
+  const cd = getCountdownFull(ct.iso);
   const countdownHTML = (a.status === 'upcoming' || a.status === 'airing') ? `
-    <div class="modal-countdown${!cd?' past':''}" id="modalCountdownEl" data-premiere="${a.premiere||''}">
-      ${cd || '▶ Currently Airing'}
+    <div class="modal-countdown${!cd?' past':''}" id="modalCountdownEl" data-premiere="${ct.iso||''}" data-label="${escHtml(ct.label)}">
+      ${cd ? escHtml(ct.label) + ' ' + cd : '▶ Currently Airing'}
     </div>` : '';
 
   // Trailer section
@@ -2099,7 +2323,7 @@ function openModal(a) {
         <thead><tr><th>EP</th><th>Status</th><th>Air Date</th></tr></thead>
         <tbody>${epRows}</tbody>
       </table>
-      <a class="mal-link" href="https://myanimelist.net/anime/${a.malId}" target="_blank">↗ View on MyAnimeList</a>
+      <a class="mal-link" href="${externalDbUrl(a)}" target="_blank" rel="noopener noreferrer">↗ View on ${externalDbName(a)}</a>
     </div>`;
   document.getElementById('overlay').classList.add('open');
 }
